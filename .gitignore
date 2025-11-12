@@ -1,3 +1,4 @@
-data/*
-!data/.gitkeep
+data/*.pt
+data/*.pkl
+data/json
 example
