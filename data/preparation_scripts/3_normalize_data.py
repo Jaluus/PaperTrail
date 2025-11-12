@@ -1,7 +1,9 @@
+import os
 import pandas as pd
 
-data_path = "data/processed_data.pkl"
-out_path = "data/processed_normalized_data.pkl"
+FILE_DIR = os.path.dirname(os.path.abspath(__file__))
+data_path = os.path.join(FILE_DIR, "..", "processed_data.pkl")
+output_path = os.path.join(FILE_DIR, "..", "processed_normalized_data.pkl")
 
 data: pd.DataFrame = pd.read_pickle(data_path)
 data.head()
@@ -38,4 +40,4 @@ data = data[data["abstract"].apply(lambda abstract: abstract.strip() != "")]
 data = data.drop_duplicates(subset=["name"])
 
 data.reset_index(drop=True, inplace=True)
-data.to_pickle(out_path)
+data.to_pickle(output_path)

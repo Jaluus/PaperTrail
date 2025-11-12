@@ -11,8 +11,8 @@ import pandas as pd
 #   },
 
 file_dir = os.path.dirname(os.path.abspath(__file__))
-data_dir = os.path.join(file_dir, "data", "json")
-output_file = os.path.join(file_dir, "data", "raw_data.pkl")
+data_dir = os.path.join(file_dir, "..", "json")
+output_file = os.path.join(file_dir, "..", "raw_data.pkl")
 
 
 file_names = [f for f in os.listdir(data_dir) if f.endswith(".json")]

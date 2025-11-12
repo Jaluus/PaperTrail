@@ -11,8 +11,8 @@ urls = {
     "cvpr": "https://cvpr.thecvf.com/Downloads",
 }
 
-file_path = os.path.dirname(os.path.abspath(__file__))
-save_dir = os.path.join(file_path, "data", "json")
+file_dir = os.path.dirname(os.path.abspath(__file__))
+save_dir = os.path.join(file_dir, "..", "json")
 
 for name, url in urls.items():
 

@@ -2,13 +2,12 @@ import os
 import pandas as pd
 import openai
 
-
 API_KEY = "your-openai-api-key"
 client = openai.OpenAI(api_key=API_KEY)
 
-file_dir = os.path.dirname(os.path.abspath(__file__))
-data_file = os.path.join(file_dir, "data", "raw_data.pkl")
-output_file = os.path.join(file_dir, "data", "processed_data.pkl")
+FILE_DIR = os.path.dirname(os.path.abspath(__file__))
+data_file = os.path.join(FILE_DIR, "..", "raw_data.pkl")
+output_file = os.path.join(FILE_DIR, "..", "processed_data.pkl")
 
 df = pd.read_pickle(data_file)
 
