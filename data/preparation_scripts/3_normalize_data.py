@@ -12,10 +12,10 @@ data.head()
 # For exampel paper https://iclr.cc/virtual/2025/poster/31514, has 450 coauthors, elading to a "kink" in the distribution
 # Beyond the Imitation Game: Quantifying and extrapolating the capabilities of language models
 
-# remove all paper where the number of authors is greater than 50, these skew the data too much
-data = data[data["authors"].apply(len) <= 50]
+# remove all paper where the number of authors is greater than 20, these skew the data too much
+data = data[data["authors"].apply(len) <= 20]
 # remove all papers where the number of authors is 1, they dont provide enough edge information
-data = data[data["authors"].apply(len) >= 2]
+data = data[data["authors"].apply(len) > 1]
 
 # lowercase all author names to avoid duplicates due to casing
 data["authors"] = data["authors"].apply(
