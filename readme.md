@@ -33,7 +33,14 @@ The goal of our system is to propose a ranked list of interesting papers given a
 data/  
     ├── json/                # Raw JSON files downloaded from the source  
     ├── raw_data.pkl         # Raw data in pickle format  
-    └── processed_data.pkl   # Processed data ready for graph construction  
+    ├── processed_data.pkl   # Processed data ready for graph construction
+    └── preparation_scripts/ # Scripts to prepare and process raw data
+src/  
+    ├── evaluation/     # Evaluation metrics and scripts
+    ├── models/         # GNN model class implementations
+    └── transforms/
+scripts/
+    └── download_data.sh      # Script to download the preprocessed data from AWS
 ```
 
 ## Graph Structure
@@ -43,3 +50,15 @@ data/
 **Node Features:** Paper embeddings (Text embeddings from abstracts), Author features (Vector of Ones)
 
 **Dimensionality:** 256 for paper embeddings
+
+## Model training
+```
+python src/training/train_model.py --training-name TB --model TB
+python src/training/train_model.py --training-name HGCN --model HGCN
+```
+## Model evaluation
+```
+python src/evaluation/evaluate_model.py --results-path results/HGCN.pkl --checkpoint checkpoints/HGCN/best_model_val_loss.pt --model HGCN
+python src/evaluation/evaluate_model.py --results-path results/TB.pkl --checkpoint checkpoints/TB/best_model_val_loss.pt --model TB
+```
+

@@ -1,5 +1,86 @@
 import torch
 import numpy as np
+from torch_geometric.metrics import LinkPredPrecision, LinkPredRecall, LinkPredMAP, LinkPredF1, LinkPredNDCG
+
+
+@torch.no_grad()
+def evaluate_ranking_metrics_PyG(
+        model,
+        data,
+        edge_type=("author", "writes", "paper"),
+        ks=(1, 3, 5, 10),
+        device=None,
+):
+    # Similar to evaluate_ranking_metrics, but using the built-in PyG eval functions
+    if device is not None:
+        data = data.to(device)
+        model = model.to(device)
+    model.eval()
+    metrics = {}
+    scores = model(data).detach()
+    labels = data[edge_type].edge_label
+    head_ids =  data[edge_type].edge_label_index[0]
+    tail_ids =  data[edge_type].edge_label_index[1]
+    edge_label_index_list = data[edge_type].edge_label_index.tolist()
+
+    unique_heads, head_row_idx = torch.unique(head_ids, return_inverse=True)
+    # get edge idx for edges that come from each head
+    head_to_edge_idx = {}
+    for i in range(len(edge_label_index_list[0])):
+        h = edge_label_index_list[0][i]
+        if not h in head_to_edge_idx:
+            head_to_edge_idx[h] = []
+        head_to_edge_idx[h].append(i)
+
+    num_heads = unique_heads.size(0)
+
+    max_per_head = (head_row_idx.bincount()).min().item()
+    # Mask positives
+    pos_mask = (labels == 1)
+
+    # head_row_idx is already mapping edges -> row index in [0, num_heads)
+    pos_head_row = head_row_idx[pos_mask]  # [num_pos_edges]
+    pos_tail = tail_ids[pos_mask]  # [num_pos_edges]
+
+    # COO format the metric expects: [2, num_pos_edges]
+    metric_edge_label_index = torch.stack(
+        [pos_head_row, pos_tail], dim=0
+    )
+    for k in ks:
+        k_eff = min(k, max_per_head)
+        if k_eff != k:
+            raise Exception(f"k_eff != k: {k_eff} != {k}, max_per_head = {max_per_head}")
+        pred_index_mat = torch.empty(
+            (num_heads, k_eff), dtype=torch.long, device=device
+        )
+        for i in range(num_heads):
+            mask = head_to_edge_idx[int(unique_heads[i])]
+            head_scores = scores[mask]   # [num_edges_for_this_head]
+            head_tails = tail_ids[mask]  # corresponding tail node ids
+            # sort by score descending and take top-k indices
+            topk_idx = torch.topk(head_scores, k_eff).indices
+            pred_index_mat[i] = head_tails[topk_idx]
+        precision = LinkPredPrecision(k_eff)
+        precision.update(pred_index_mat, metric_edge_label_index)
+        precision = precision.compute()
+        recall = LinkPredRecall(k_eff)
+        recall.update(pred_index_mat, metric_edge_label_index)
+        recall = recall.compute()
+        f1 = LinkPredF1(k_eff)
+        f1.update(pred_index_mat, metric_edge_label_index)
+        f1 = f1.compute()
+        map_score = LinkPredMAP(k_eff)
+        map_score.update(pred_index_mat, metric_edge_label_index)
+        map_score = map_score.compute()
+        ndcg = LinkPredNDCG(k_eff)
+        ndcg.update(pred_index_mat, metric_edge_label_index)
+        ndcg = ndcg.compute()
+        metrics[f'Precision@{k}'] = precision.item()
+        metrics[f'Recall@{k}'] = recall.item()
+        metrics[f'F1@{k}'] = f1.item()
+        metrics[f'MAP@{k}'] = map_score.item()
+        metrics[f'NDCG@{k}'] = ndcg.item()
+    return metrics
 
 @torch.no_grad()
 def evaluate_ranking_metrics(
@@ -49,7 +130,6 @@ def evaluate_ranking_metrics(
     heads_idx_map = {}
     for i, h in enumerate(head_ids):
         heads_idx_map.setdefault(int(h), []).append(i)
-
     # containers
     hits_at_k = {k: [] for k in ks}
     prec_at_k = {k: [] for k in ks}
@@ -72,18 +152,17 @@ def evaluate_ranking_metrics(
         idxs = np.array(idxs, dtype=np.int64)
         y = labels[idxs]
         s = scores[idxs]
-
-        # sort by score desc
+        # Sort by score desc
         order = np.argsort(-s)
         y_sorted = y[order]
-
+        #print("y sorted shape:", y_sorted.shape)
+        #print("y sorted max min" , y_sorted.max(), y_sorted.min(), "first 5 elements:", y_sorted[:5], "last 5 elements:", y_sorted[-5:])
         num_pos = int(y.sum())
-
         # Precision/Recall/Hits/NDCG/F1/MAP@K
         for k in ks:
             topk = y_sorted[:k]
+            #print("k =", k, "; topK =", topk)
             tp_k = int(topk.sum())
-
             # Include all heads for Hits and Precision
             hits_at_k[k].append(1.0 if tp_k > 0 else 0.0)
             prec_k = float(tp_k) / max(k, 1)
