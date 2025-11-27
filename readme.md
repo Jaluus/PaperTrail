@@ -52,13 +52,14 @@ scripts/
 **Dimensionality:** 256 for paper embeddings
 
 ## Model training
+TODO add some params e.g. LR, N_layers etc.
 ```
-python src/training/train_model.py --training-name TB --model TB
-python src/training/train_model.py --training-name HGCN --model HGCN
+python -m src.training.train_model --training-name TB --model TB
+python -m src.training.train_model --training-name HGCN --model HGCN
 ```
 ## Model evaluation
 ```
-python src/evaluation/evaluate_model.py --results-path results/HGCN.pkl --checkpoint checkpoints/HGCN/best_model_val_loss.pt --model HGCN
-python src/evaluation/evaluate_model.py --results-path results/TB.pkl --checkpoint checkpoints/TB/best_model_val_loss.pt --model TB
+python -m src.evaluation.evaluate_model --results-path results/HGCN.pkl --checkpoint checkpoints/HGCN/best_model_val_loss.pt --model HGCN
+python -m src.evaluation.evaluate_model --results-path results/TB.pkl --checkpoint checkpoints/TB/best_model_val_loss.pt --model TB
 ```
 

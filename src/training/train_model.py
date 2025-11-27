@@ -93,6 +93,10 @@ for epoch in range(EPOCHS):
     print(f"Epoch: {epoch:03d}, Loss: {total_loss / total_examples:.4f}")
     precision, recall, f1_score, accuracy, val_loss = evaluate_model_simple_metrics(model, val_data)
     print(f"Validation metrics after epoch {epoch:03d}: P={precision:.4f}, R={recall:.4f}, F1={f1_score:.4f}, Acc={accuracy:.4f}, Loss={val_loss}")
+    # save the metrics in a text file validation_metrics_epoch_{epoch:03d}.txt in a csv format
+    with open(os.path.join(training_path, f"validation_metrics_epoch_{epoch:03d}.txt"), "w") as f:
+        f.write("Precision,Recall,F1_score,Accuracy,Validation_Loss,Train_Loss\n")
+        f.write(f"{precision},{recall},{f1_score},{accuracy},{val_loss},{total_loss / total_examples}\n")
     # save model checkpoint
     torch.save(model.state_dict(), os.path.join(training_path, f"model_epoch_{epoch:03d}.pt"))
     if val_loss < best_validation_loss:
