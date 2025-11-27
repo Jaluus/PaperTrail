@@ -1,8 +1,9 @@
 import torch
 
-def evaluate_model_simple_metrics(model, data):
+def evaluate_model_simple_metrics(model, data, device):
     model.eval()
     with torch.no_grad():
+        data = data.to(device)
         y_pred = model(data)
 
     y_pred = y_pred.cpu().numpy()

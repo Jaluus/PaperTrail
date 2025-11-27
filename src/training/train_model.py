@@ -91,7 +91,7 @@ for epoch in range(EPOCHS):
 
     # Compute simple validation metrics (P, R, F1, AUC)
     print(f"Epoch: {epoch:03d}, Loss: {total_loss / total_examples:.4f}")
-    precision, recall, f1_score, accuracy, val_loss = evaluate_model_simple_metrics(model, val_data)
+    precision, recall, f1_score, accuracy, val_loss = evaluate_model_simple_metrics(model, val_data, device)
     print(f"Validation metrics after epoch {epoch:03d}: P={precision:.4f}, R={recall:.4f}, F1={f1_score:.4f}, Acc={accuracy:.4f}, Loss={val_loss}")
     # save the metrics in a text file validation_metrics_epoch_{epoch:03d}.txt in a csv format
     with open(os.path.join(training_path, f"validation_metrics_epoch_{epoch:03d}.txt"), "w") as f:
