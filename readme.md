@@ -25,7 +25,8 @@ The goal of our system is to propose a ranked list of interesting papers given a
 - Processed Normalized Data: [Download Processed Data](https://papertraildata.s3.us-west-1.amazonaws.com/processed_normalized_data.pkl)
 - Full Graph Data: [Download Full Graph Data](https://papertraildata.s3.us-west-1.amazonaws.com/hetero_data.pt)
 - Graph Without Coauthors Data: [Download Graph Without Coauthors Data](https://papertraildata.s3.us-west-1.amazonaws.com/hetero_data_no_coauthor.pt)
-- Early models: [Find on Huggingface](https://huggingface.co/gregorkrzmanc/papertrail_models/tree/main)
+- [Deprecated] Early models: [Find on Huggingface](https://huggingface.co/gregorkrzmanc/papertrail_models/tree/main)
+- Models and results: see `download_models.sh`
 
 ## Folder Structure
 
@@ -40,7 +41,8 @@ src/
     ├── models/         # GNN model class implementations
     └── transforms/
 scripts/
-    └── download_data.sh      # Script to download the preprocessed data from AWS
+    ├── download_data.sh     # Script to download the preprocessed data from AWS
+    └── download_models.sh   # Download the model checkpoints from AWS
 ```
 
 ## Graph Structure
@@ -62,4 +64,13 @@ python -m src.training.train_model --training-name HGCN --model HGCN
 python -m src.evaluation.evaluate_model --results-path results/HGCN.pkl --checkpoint checkpoints/HGCN/best_model_val_loss.pt --model HGCN
 python -m src.evaluation.evaluate_model --results-path results/TB.pkl --checkpoint checkpoints/TB/best_model_val_loss.pt --model TB
 ```
+## Plots of validation metrics vs. epoch for different trainings
+Will plot the validation metrics for all the trainings.
+```
+python -m src.evaluation.plot_metrics
+```
+
+## Test metrics
+Print the table:
+```python -m src.evaluation.print_eval_table```
 
