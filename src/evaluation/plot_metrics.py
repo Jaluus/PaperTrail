@@ -129,7 +129,8 @@ def plot_metrics(subdirs, metrics_names, metrics_per_subdir, output_file):
             ax.set_xlabel("Epoch")
 
     # Put legend only once (top subplot)
-    axes[0].legend(loc="best", fontsize="small")
+    for i in range(len(axes)):
+        axes[i].legend(loc="best", fontsize="small")
 
     plt.tight_layout()
     fig.savefig(output_file)

@@ -77,6 +77,9 @@ def add_negative_test_edges_per_user(data: HeteroData, num_neg_per_user: int = 1
     edge_type = ("author", "writes", "paper")
     labels = data[edge_type].edge_label
     edge_label_index_positives = data[edge_type].edge_label_index[:, labels==1]
+    num_positive_labels = edge_label_index_positives.size(1)
+    if num_positive_labels == 0:
+        return None
     neg_edge_index = sample_negatives_per_user_bipartite(
         edge_label_index_positives,
         num_users=data[edge_type[0]].num_nodes,

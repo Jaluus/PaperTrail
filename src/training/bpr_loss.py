@@ -12,6 +12,7 @@ def bpr_loss_all_negs_per_user(
     device: torch.device,
     num_neg_per_user: int = 10,
     edge_type=EDGE_TYPE,
+    validation=False
 ):
     """
     BPR loss using ALL negatives per user instead of sampling one.
@@ -30,11 +31,14 @@ def bpr_loss_all_negs_per_user(
     device: torch.device("cuda") or torch.device("cpu")
     num_neg_per_user: how many negatives to sample per user in this batch
     edge_type: ("author", "writes", "paper")
+    validation: if True, it will also return y_pred and y_true
     """
-
     # 1) Add per-user negatives (in-place on this batch)
+    # return None if there are no positive edges in the batch
     batch = add_negative_test_edges_per_user(batch, num_neg_per_user=num_neg_per_user)
-
+    if batch is None:
+        # no positive edges in batch; drop it (could sometimes happen at the end of the dataset)
+        return None, None, None
     batch = batch.to(device)
 
     edge_label_index = batch[edge_type].edge_label_index  # [2, E]
@@ -55,8 +59,8 @@ def bpr_loss_all_negs_per_user(
     neg_idx = neg_mask.nonzero(as_tuple=False).view(-1)
 
     if pos_idx.numel() == 0 or neg_idx.numel() == 0:
-        # Degenerate batch (can happen on very small graphs or weird splits)
-        return None
+        # Degenerate batch (sometimes happens at the end of the dataset)
+        return None, None, None
 
     pos_users = users[pos_idx]
     neg_users = users[neg_idx]
@@ -65,6 +69,7 @@ def bpr_loss_all_negs_per_user(
     unique_users = pos_users.unique()
 
     per_user_losses = []
+    per_user_pos_scores, per_user_neg_scores = [], []
 
     for u in unique_users:
         # mask for this user among positives and negatives
@@ -87,10 +92,14 @@ def bpr_loss_all_negs_per_user(
         # BPR: -log σ(pos - neg), averaged over all pos-neg pairs of this user
         loss_u = -F.logsigmoid(diff).mean()
         per_user_losses.append(loss_u)
+        per_user_pos_scores.append(pos_scores_u.mean().item())
+        per_user_neg_scores.append(neg_scores_u.mean().item())
 
     if not per_user_losses:
-        return None
+        return None, None, None
 
     # 6) Average over users
     loss = torch.stack(per_user_losses).mean()
-    return loss
+    if validation:
+        return loss, scores, edge_label # return y_pred and y_true for validation
+    return loss, per_user_pos_scores, per_user_neg_scores
