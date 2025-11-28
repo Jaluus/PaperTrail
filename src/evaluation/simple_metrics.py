@@ -1,6 +1,6 @@
 import torch
 
-def evaluate_model_simple_metrics(model, data, device):
+def evaluate_model_simple_metrics(model, data, device, loss_type):
     model.eval()
     with torch.no_grad():
         data = data.to(device)

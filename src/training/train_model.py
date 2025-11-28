@@ -16,12 +16,13 @@ import torch_geometric.transforms as T
 from src.evaluation.simple_metrics import evaluate_model_simple_metrics
 from src.models.TBBaselineModel import TBBaselineModel
 from src.models.HeteroGCNModel import HeteroGCNModel
+from src.training.bpr_loss import bpr_loss_all_negs_per_user
 
 ########### Parameters ############
 parser = argparse.ArgumentParser(description='Train a model for link prediction.')
 parser.add_argument('--training-name', type=str)
 parser.add_argument("--model", type=str, choices=["TB", "HGCN"], help="Model to train: 'TB' for TBBaselineModel, 'HeteroGCN' for HeteroGCNModel")
-
+parser.add_argument("--loss", type=str, choices=["BCE", "BPR"], default="BCE", help="Loss function to use: 'BCE' for Binary Cross Entropy, 'BPR' for Bayesian Personalized Ranking")
 
 args = parser.parse_args()
 
@@ -80,18 +81,30 @@ for epoch in range(EPOCHS):
     total_examples = 0
     for sampled_data in tqdm.tqdm(train_loader):
         optimizer.zero_grad()
-        sampled_data.to(device)
-        y_pred = model(sampled_data)
-        y_true = sampled_data["author", "writes", "paper"].edge_label
-        loss = F.binary_cross_entropy_with_logits(y_pred, y_true)
+        if args.loss == "BCE":
+            sampled_data.to(device)
+            y_pred = model(sampled_data)
+            y_true = sampled_data["author", "writes", "paper"].edge_label
+            loss = F.binary_cross_entropy_with_logits(y_pred, y_true)
+            total_loss += loss.item() * y_pred.numel()
+            total_examples += y_pred.numel()
+        elif args.loss == "BPR":
+            loss = bpr_loss_all_negs_per_user(
+                sampled_data,
+                model,
+                device=device,
+                num_neg_per_user=5,
+                edge_type=("author", "writes", "paper"),
+            )
+            total_loss += loss.item()
+            total_examples += 1 # BPR loss is averaged already
+        else:
+            raise NotImplementedError
         loss.backward()
         optimizer.step()
-        total_loss += loss.item() * y_pred.numel()
-        total_examples += y_pred.numel()
-
     # Compute simple validation metrics (P, R, F1, AUC)
     print(f"Epoch: {epoch:03d}, Loss: {total_loss / total_examples:.4f}")
-    precision, recall, f1_score, accuracy, val_loss = evaluate_model_simple_metrics(model, val_data, device)
+    precision, recall, f1_score, accuracy, val_loss = evaluate_model_simple_metrics(model, val_data, device, args.loss)
     print(f"Validation metrics after epoch {epoch:03d}: P={precision:.4f}, R={recall:.4f}, F1={f1_score:.4f}, Acc={accuracy:.4f}, Loss={val_loss}")
     # save the metrics in a text file validation_metrics_epoch_{epoch:03d}.txt in a csv format
     with open(os.path.join(training_path, f"validation_metrics_epoch_{epoch:03d}.txt"), "w") as f:
