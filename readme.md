@@ -58,6 +58,11 @@ TODO add some params e.g. LR, N_layers etc.
 ```
 python -m src.training.train_model --training-name TB --model TB
 python -m src.training.train_model --training-name HGCN --model HGCN
+
+python -m src.training.train_model --training-name TB_BPR --model TB --loss BPR
+python -m src.training.train_model --training-name HGCN_BPR --model HGCN --loss BPR
+
+
 ```
 ## Model evaluation
 ```
