@@ -24,7 +24,9 @@ parser = argparse.ArgumentParser(description='Train a model for link prediction.
 parser.add_argument('--training-name', type=str)
 parser.add_argument("--model", type=str, choices=["TB", "HGCN"], help="Model to train: 'TB' for TBBaselineModel, 'HeteroGCN' for HeteroGCNModel")
 parser.add_argument("--loss", type=str, choices=["BCE", "BPR"], default="BCE", help="Loss function to use: 'BCE' for Binary Cross Entropy, 'BPR' for Bayesian Personalized Ranking")
+parser.add_argument("--LR", type=float, default=0.001, help="Learning rate for the optimizer")
 parser.add_argument("--epochs", type=int, default=20, help="Number of training epochs")
+parser.add_argument("--BPR-num-neg", type=int, default=5, help="Number of negative samples per user for BPR loss")
 
 args = parser.parse_args()
 
@@ -67,7 +69,7 @@ train_loader = LinkNeighborLoader(
 )
 
 
-LR = 0.001
+LR = args.LR
 EPOCHS = args.epochs
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
@@ -96,7 +98,7 @@ for epoch in range(EPOCHS):
                 sampled_data,
                 model,
                 device=device,
-                num_neg_per_user=5,
+                num_neg_per_user=args.BPR_num_neg,
                 edge_type=("author", "writes", "paper"),
             )
             if loss is not None:

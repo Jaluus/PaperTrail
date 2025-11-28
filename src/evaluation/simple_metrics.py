@@ -1,7 +1,8 @@
 import torch
 from src.training.bpr_loss import bpr_loss_all_negs_per_user
 
-def evaluate_model_simple_metrics(model, data, device, loss_type):
+
+def evaluate_model_simple_metrics(model, data, device, loss_type="BCE"):
     model.eval()
     if loss_type == "BCE":
         with torch.no_grad():

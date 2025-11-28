@@ -48,15 +48,20 @@ table_data = []
 for model, vals in metrics.items():
     row = [
         model,
+        f"{vals.get('MAP@1', 0):.3f}",
         f"{vals.get('MAP@4', 0):.3f}",
         f"{vals.get('MAP@12', 0):.3f}",
+        f"{vals.get('Precision@1', 0):.3f}",
         f"{vals.get('Precision@4', 0):.3f}",
         f"{vals.get('Precision@12', 0):.3f}",
+        f"{vals.get('Recall@1', 0):.3f}",
         f"{vals.get('Recall@4', 0):.3f}",
         f"{vals.get('Recall@12', 0):.3f}",
+        f"{vals.get('F1@1', 0):.3f}",
         f"{vals.get('F1@4', 0):.3f}",
         f"{vals.get('F1@12', 0):.3f}",
     ]
     table_data.append(row)
-headers = ["Model", "MAP@4", "MAP@12", "Precision@4", "Precision@12", "Recall@4", "Recall@12", "F1@4", "F1@12"]
+#headers = ["Model", "MAP@4", "MAP@12", "Precision@4", "Precision@12", "Recall@4", "Recall@12", "F1@4", "F1@12"]
+headers = ["Model", "MAP@1", "MAP@4", "MAP@12", "Precision@1", "Precision@4", "Precision@12", "Recall@1", "Recall@4", "Recall@12", "F1@1", "F1@4", "F1@12"]
 print(tabulate(table_data, headers=headers, tablefmt="grid"))

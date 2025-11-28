@@ -46,7 +46,7 @@ model.eval()
 # Ranking metrics
 Ks = (1, 3, 4, 12)
 metrics = evaluate_ranking_metrics(model, test_data, ks=Ks, device=device)
-precision, recall, f1_score, accuracy, test_loss = evaluate_model_simple_metrics(model, test_data, device)
+precision, recall, f1_score, accuracy, test_loss = evaluate_model_simple_metrics(model, test_data, device, loss_type="BPR")
 metrics["Global_Precision"] = precision
 metrics["Global_Recall"] = recall
 metrics["Global_F1"] = f1_score
