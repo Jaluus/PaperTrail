@@ -69,6 +69,15 @@ python -m src.training.train_model --training-name HGCN_BPR --model HGCN --loss 
 python -m src.evaluation.evaluate_model --results-path results/HGCN.pkl --checkpoint checkpoints/HGCN/best_model_val_loss.pt --model HGCN
 python -m src.evaluation.evaluate_model --results-path results/TB.pkl --checkpoint checkpoints/TB/best_model_val_loss.pt --model TB
 ```
+
+
+Non-ML baselines:
+
+```
+python -m src.evaluation.evaluate_model --results-path results/DegreeBaseline.pkl --model DegreeBaseline
+ 
+
+```
 ## Plots of validation metrics vs. epoch for different trainings
 Will plot the validation metrics for all the trainings. TODO: use wandb or something similar as this will get messy otherwise. 
 ```
