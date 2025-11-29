@@ -56,8 +56,8 @@ def evaluate_ranking_metrics_PyG(
         for i in range(num_heads):
             mask = head_to_edge_idx[int(unique_heads[i])]
             head_scores = scores[mask]   # [num_edges_for_this_head]
-            head_tails = tail_ids[mask]  # corresponding tail node ids
-            # sort by score descending and take top-k indices
+            head_tails = tail_ids[mask]  # Corresponding tail node ids
+            # Sort by score descending and take top-k indices
             topk_idx = torch.topk(head_scores, k_eff).indices
             pred_index_mat[i] = head_tails[topk_idx]
         precision = LinkPredPrecision(k_eff)
@@ -191,14 +191,12 @@ def evaluate_ranking_metrics(
                         prec_sum += cum_pos / rank
                 denom_apk = min(num_pos, k)
                 map_at_k[k].append(prec_sum / denom_apk if denom_apk > 0 else 0.0)
-
         # MRR + (untruncated) MAP only if there is at least one positive
         if num_pos > 0:
             # MRR
             pos_ranks = np.where(y_sorted == 1)[0]  # 0-based ranks
             first_rank = pos_ranks[0] + 1           # 1-based
             mrr_vals.append(1.0 / first_rank)
-
             # Untruncated AP
             cum_pos = 0
             prec_sum = 0.0
@@ -207,15 +205,14 @@ def evaluate_ranking_metrics(
                     cum_pos += 1
                     prec_sum += cum_pos / rank
             ap_vals.append(prec_sum / num_pos)
-
-    # aggregate
+    # Aggregate
     def avg(lst):
         return float(np.mean(lst)) if len(lst) > 0 else 0.0
 
     results = {
         "num_heads": len(heads_idx_map),
         "MRR": avg(mrr_vals),
-        "MAP": avg(ap_vals),  # untruncated
+        "MAP": avg(ap_vals),  # Untruncated
     }
 
     for k in ks:

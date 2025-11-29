@@ -4,7 +4,7 @@ seed_everything(42)
 import os
 import torch_geometric.transforms as T
 from src.transforms.per_user_neg_sampling import add_negative_test_edges_per_user
-from src.evaluation.ranking_metrics import evaluate_ranking_metrics
+from src.evaluation.ranking_metrics import evaluate_ranking_metrics, evaluate_ranking_metrics_PyG
 from src.dataset.get_dataset import get_dataset_transductive_split
 from torch_geometric.data import HeteroData
 from torch_geometric.loader import LinkNeighborLoader
@@ -17,19 +17,32 @@ from src.evaluation.simple_metrics import evaluate_model_simple_metrics
 from src.models.TBBaselineModel import TBBaselineModel
 from src.models.HeteroGCNModel import HeteroGCNModel
 from src.models.DegreeBaseline import DegreeBaselineModel
+from src.models.PPR import PPRBaselineModel
+from src.models.IdealBaseline import IdealBaselineModel
 import argparse
 import pickle
 
 
 ########### Parameters #############
 parser = argparse.ArgumentParser(description='Evaluate a trained model for link prediction.')
-parser.add_argument('--model', type=str, choices=["TB", "HGCN", "DegreeBaseline"], help="Model to evaluate: 'TB' for TBBaselineModel, 'HGCN' for HeteroGCNModel")
+parser.add_argument('--model', type=str, choices=["TB", "HGCN", "DegreeBaseline", "PPR", "IdealBaseline"], help="Model to evaluate: 'TB' for TBBaselineModel, 'HGCN' for HeteroGCNModel")
 parser.add_argument("--checkpoint", type=str, default="checkpoints/baseline_weights.pt", help="Path to the model checkpoint to load")
-parser.add_argument("--results-path", type=str, default="results/TB.pkl", help="Path to store the evaluation results on the testing set")
+parser.add_argument("--results-path", type=str, help="Path to store the evaluation results on the testing set")
 
 args = parser.parse_args()
 
-ModelClass = {"TB": TBBaselineModel, "HGCN": HeteroGCNModel, "DegreeBaseline": DegreeBaselineModel}[args.model]
+ModelClass = {
+    "TB": TBBaselineModel,
+    "HGCN": HeteroGCNModel,
+    "DegreeBaseline": DegreeBaselineModel,
+    "PPR": PPRBaselineModel,
+    "IdealBaseline": IdealBaselineModel
+}[args.model]
+
+def is_model_static(model_name):
+    # Returns true if the model does not require loading weights (i.e., is a "classical" baseline or something similar)
+    return model_name in ["DegreeBaseline", "PPR", "IdealBaseline"]
+
 PathToCheckpoint = args.checkpoint
 ResultsPath = args.results_path
 ####################################
@@ -50,7 +63,7 @@ else:
     model = ModelClass(**pickle.load(open(kwargs_path, "rb")), data=full_dataset)
 
 model = model.to(device)
-if args.model != "DegreeBaseline":
+if not is_model_static(args.model):
     model.load_state_dict(torch.load(PathToCheckpoint, map_location=device))
 
 model.eval()
@@ -58,7 +71,14 @@ model.eval()
 Ks = (1, 3, 4, 12)
 
 metrics = evaluate_ranking_metrics(model, test_data, ks=Ks, device=device)
-if args.model != "DegreeBaseline":
+metrics_pyg = evaluate_ranking_metrics_PyG(model, test_data, ks=Ks, device=device)
+# sanity check: for each key in metrics_PyG, check that the value is approximately equal to the one in metrics
+for key in metrics_pyg:
+    abs_err = metrics_pyg[key] - metrics[key]
+    if abs_err > 1e-5:
+        print(f"Warning: discrepancy between custom and PyG ranking metrics for {key}: {metrics[key]} vs {metrics_pyg[key]} (abs err: {abs_err})")
+
+if not is_model_static(args.model):
     precision, recall, f1_score, accuracy, test_loss = evaluate_model_simple_metrics(model, test_data, device, loss_type="BPR")
     metrics["Global_Precision"] = precision
     metrics["Global_Recall"] = recall
