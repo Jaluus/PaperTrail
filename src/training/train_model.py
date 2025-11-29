@@ -2,6 +2,7 @@ import torch
 from torch_geometric import seed_everything
 seed_everything(42)
 import os
+import pickle
 import torch_geometric.transforms as T
 from src.transforms.per_user_neg_sampling import add_negative_test_edges_per_user
 from src.evaluation.ranking_metrics import evaluate_ranking_metrics
@@ -25,8 +26,10 @@ parser.add_argument('--training-name', type=str)
 parser.add_argument("--model", type=str, choices=["TB", "HGCN"], help="Model to train: 'TB' for TBBaselineModel, 'HeteroGCN' for HeteroGCNModel")
 parser.add_argument("--loss", type=str, choices=["BCE", "BPR"], default="BCE", help="Loss function to use: 'BCE' for Binary Cross Entropy, 'BPR' for Bayesian Personalized Ranking")
 parser.add_argument("--LR", type=float, default=0.001, help="Learning rate for the optimizer")
+parser.add_argument("--dropout", type=float, default=0.0, help="Dropout between layers")
 parser.add_argument("--epochs", type=int, default=20, help="Number of training epochs")
 parser.add_argument("--BPR-num-neg", type=int, default=5, help="Number of negative samples per user for BPR loss")
+parser.add_argument("--residual-connection", action='store_true', help="Whether to use residual connections in the GNN model")
 
 args = parser.parse_args()
 
@@ -68,13 +71,24 @@ train_loader = LinkNeighborLoader(
     shuffle=True,
 )
 
-
 LR = args.LR
 EPOCHS = args.epochs
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
-model = ModelClass(hidden_channels=256, data=full_dataset)
-optimizer = torch.optim.Adam(model.parameters(), lr=LR)
+kwargs = {}
+kwargs["dropout"] = args.dropout
+kwargs["hidden_channels"] = 256
+
+if args.residual_connection:
+    kwargs["residual_connection"] = True
+
+model = ModelClass(data=full_dataset, **kwargs)
+# save the kwargs dict into a pickle file in the training_path
+with open(os.path.join(training_path, "model_args.pkl"), "wb") as f:
+    pickle.dump(kwargs, f)
+
+optimizer = torch.optim.Adam(model.parameters(), lr=LR, weight_decay=5e-4)
+
 model = model.to(device)
 
 model.train()

@@ -5,7 +5,7 @@ from torch_geometric.data import HeteroData
 from src.models.Classifier_helper import Classifier
 
 class TBBaselineModel(torch.nn.Module):
-    def __init__(self, hidden_channels: int, data: HeteroData):
+    def __init__(self, hidden_channels: int, data: HeteroData, dropout=0.0):
         super().__init__()
         self.hidden_channels = hidden_channels
 
@@ -18,7 +18,9 @@ class TBBaselineModel(torch.nn.Module):
 
         # Optional extra transform on the aggregated author representation
         self.lin_author = torch.nn.Linear(hidden_channels, hidden_channels, bias=True)
-
+        self.dropout = None
+        if dropout > 0:
+            self.dropout = torch.nn.Dropout(dropout)
         self.classifier = Classifier()  # assumes signature: (author_emb, paper_emb, edge_label_index) -> scores
 
     def forward(self, data: HeteroData) -> torch.Tensor:

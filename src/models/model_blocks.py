@@ -9,7 +9,7 @@ import torch
 
 # Simple 3 hop GNN
 class GNN(torch.nn.Module):
-    def __init__(self, hidden_channels):
+    def __init__(self, hidden_channels, dropout=0.0, residual_connection=False):
         super().__init__()
         self.conv1 = SAGEConv(
             hidden_channels,
@@ -29,9 +29,19 @@ class GNN(torch.nn.Module):
             aggr="mean",
             project=False,
         )
+        self.dropout = dropout
+        self.residual_connection = residual_connection
 
-    def forward(self, x: torch.Tensor, edge_index: torch.Tensor) -> torch.Tensor:
-        x = F.relu(self.conv1(x, edge_index))
-        x = F.relu(self.conv2(x, edge_index))
-        x = self.conv3(x, edge_index)
-        return x
+    def forward(self, x, edge_index):
+        # Optional: feature dropout on input
+        x = F.dropout(x, p=self.dropout, training=self.training)
+
+        h1 = F.relu(self.conv1(x, edge_index))
+        h1 = F.dropout(h1, p=self.dropout, training=self.training)
+
+        h2 = F.relu(self.conv2(h1, edge_index))
+        h2 = F.dropout(h2, p=self.dropout, training=self.training)
+        if self.residual_connection:
+            h2 = h2 + h1  # Residual connection
+        out = self.conv3(h2, edge_index)
+        return out

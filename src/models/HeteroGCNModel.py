@@ -7,13 +7,13 @@ from src.models.model_blocks import GNN
 
 
 class HeteroGCNModel(torch.nn.Module):
-    def __init__(self, hidden_channels: int, data: HeteroData):
+    def __init__(self, hidden_channels: int, data: HeteroData, dropout=0.0, residual_connection=False):
         super().__init__()
 
         self.hidden_channels = hidden_channels
 
         # Instantiate homogeneous GNN:
-        self.gnn = GNN(hidden_channels)
+        self.gnn = GNN(hidden_channels, dropout=dropout, residual_connection=residual_connection)
 
         # Convert GNN model into a heterogeneous variant:
         self.gnn = to_hetero(self.gnn, metadata=data.metadata())
