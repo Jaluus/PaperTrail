@@ -70,7 +70,7 @@ python -m src.evaluation.evaluate_model --results-path results/HGCN.pkl --checkp
 python -m src.evaluation.evaluate_model --results-path results/TB.pkl --checkpoint checkpoints/TB/best_model_val_loss.pt --model TB
 ```
 ## Plots of validation metrics vs. epoch for different trainings
-Will plot the validation metrics for all the trainings.
+Will plot the validation metrics for all the trainings. TODO: use wandb or something similar as this will get messy otherwise. 
 ```
 python -m src.evaluation.plot_metrics
 ```
