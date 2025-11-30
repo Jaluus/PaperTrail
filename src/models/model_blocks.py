@@ -29,19 +29,20 @@ class GNN(torch.nn.Module):
             aggr="mean",
             project=False,
         )
-        self.dropout = dropout
+        if dropout > 0:
+            self.dropout = torch.nn.Dropout(p=dropout)
+        else:
+            self.dropout = lambda x: x  # Identity
         self.residual_connection = residual_connection
 
     def forward(self, x, edge_index):
-        # Optional: feature dropout on input
-        x = F.dropout(x, p=self.dropout, training=self.training)
-
         h1 = F.relu(self.conv1(x, edge_index))
-        h1 = F.dropout(h1, p=self.dropout, training=self.training)
-
+        if self.residual_connection:
+            h1 = h1 + x  # Residual connection
         h2 = F.relu(self.conv2(h1, edge_index))
-        h2 = F.dropout(h2, p=self.dropout, training=self.training)
         if self.residual_connection:
             h2 = h2 + h1  # Residual connection
         out = self.conv3(h2, edge_index)
+        if self.residual_connection:
+            out = out + h2  # Residual connection
         return out
