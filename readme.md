@@ -54,7 +54,9 @@ scripts/
 **Dimensionality:** 256 for paper embeddings
 
 ## Model training
+
 TODO add some params e.g. LR, N_layers etc.
+
 ```
 python -m src.training.train_model --training-name TB --model TB
 python -m src.training.train_model --training-name HGCN --model HGCN
@@ -64,12 +66,13 @@ python -m src.training.train_model --training-name HGCN_BPR --model HGCN --loss 
 
 
 ```
+
 ## Model evaluation
+
 ```
 python -m src.evaluation.evaluate_model --results-path results/HGCN.pkl --checkpoint checkpoints/HGCN/best_model_val_loss.pt --model HGCN
 python -m src.evaluation.evaluate_model --results-path results/TB.pkl --checkpoint checkpoints/TB/best_model_val_loss.pt --model TB
 ```
-
 
 Non-ML baselines:
 
@@ -78,13 +81,66 @@ python -m src.evaluation.evaluate_model --results-path results/DegreeBaseline.pk
  
 
 ```
+
 ## Plots of validation metrics vs. epoch for different trainings
-Will plot the validation metrics for all the trainings. TODO: use wandb or something similar as this will get messy otherwise. 
+
+Will plot the validation metrics for all the trainings. TODO: use wandb or something similar as this will get messy otherwise.
+
 ```
 python -m src.evaluation.plot_metrics
 ```
 
 ## Test metrics
+
 Print the table:
 ```python -m src.evaluation.print_eval_table```
 
+## Metrics
+
+We evalaluate our model using the following metrics
+
+$$
+\text{Recall} = \frac{TP}{TP + FP}
+$$
+
+$$
+\text{Precision} = \frac{TP}{TP + FN}
+$$
+
+**Dicounted Cumulative Gain (DCG)** at rank position p is defined as:
+
+$$
+\text{DCG}_\text{p} = \sum_{i = 1}^p \frac{2^{rel_i} - 1}{\log_2{(i + 1)}}
+$$
+
+p: a particular rank position
+
+$rel_i \in \{0, 1\}$ : graded relevance of the result at position $i$
+
+**Idealised Dicounted Cumulative Gain (IDCG)**, namely the maximum possible DCG, at rank position $p$ is defined as:
+
+$$
+\text{IDCG}_\text{p} = \sum_{i = 1}^{|REL_p|} \frac{2^{rel_i} - 1}{\log_2{(i + 1)}}
+$$
+
+$|REL_p|$ : list of items ordered by their relevance up to position p
+
+**Normalized Dicounted Cumulative Gain (NDCG)** at rank position $p$ is defined as:
+
+$$
+\text{nDCG}_\text{p} = \frac{\text{DCG}_p}{\text{nDCG}_p}
+$$
+
+Specifically, we use the metrics recall@K, precision@K, and NDCG@K. @K indicates that these metrics are computed on the top K recommendations.
+
+## Loss Function
+
+We utilize a Bayesian Personalized Ranking (BPR) loss, a pairwise objective which encourages the predictions of positive samples to be higher than negative samples for each user.
+
+$$
+L_{BPR} = - \frac{1}{|E_{pos}(u^*)|\cdot|E_{neg}(u^*)|} \sum_{(u^*,v_{pos}) \in E_{pos}(u^*)} \sum_{(u^*,v_{neg}) \in E_{neg}(u^*)} -log(f_\theta(u^*, v_{pos}) - f_\theta(u^*, v_{neg}))
+$$
+
+$\hat{y}_{u}$: predicted score of a positive sample
+
+$\hat{y}_{uj}$: predicted score of a negative sample
