@@ -23,12 +23,6 @@ class GNN(torch.nn.Module):
             aggr="mean",
             project=False,
         )
-        self.conv_3 = SAGEConv(
-            embedding_dim,
-            embedding_dim,
-            aggr="mean",
-            project=False,
-        )
 
     def forward(
         self,
@@ -36,12 +30,7 @@ class GNN(torch.nn.Module):
         edge_index: torch.Tensor,
     ) -> torch.Tensor:
         x = self.conv_1(x, edge_index)
-        x = F.relu(x)
-
         x = self.conv_2(x, edge_index)
-        x = F.relu(x)
-
-        x = self.conv_3(x, edge_index)
         return x
 
 
@@ -63,15 +52,28 @@ class Model(torch.nn.Module):
         supervision_edge_index: torch.Tensor,
     ) -> torch.Tensor:
 
-        gnn_output = self.gnn(
+        new_node_embeddings = self.gnn(
             node_embeddings,
             message_passing_edge_index,
         )
 
         # now compute dot product for each edge
-        src_nodes = supervision_edge_index[0]
-        dst_nodes = supervision_edge_index[1]
-        src_embeddings = gnn_output[src_nodes]
-        dst_embeddings = gnn_output[dst_nodes]
+        src_node_ids = supervision_edge_index[0]
+        dst_node_ids = supervision_edge_index[1]
+
+        src_embeddings = new_node_embeddings[src_node_ids]
+        dst_embeddings = new_node_embeddings[dst_node_ids]
         scores = (src_embeddings * dst_embeddings).sum(dim=1)
         return scores
+
+    def get_node_embeddings(
+        self,
+        node_embeddings: torch.Tensor,
+        message_passing_edge_index: torch.Tensor,
+    ) -> torch.Tensor:
+
+        new_node_embeddings = self.gnn(
+            node_embeddings,
+            message_passing_edge_index,
+        )
+        return new_node_embeddings
