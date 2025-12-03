@@ -1,8 +1,11 @@
 import torch
+from functools import lru_cache
 
 
-# helper function to get N_u
-def get_author_positive_papers(edge_index):
+# We are caching the function as it can be called multiple times with the same edge_index during evaluation
+# We only need to compute this once, as the edge_index does not change
+@lru_cache(maxsize=None)
+def generate_ground_truth_mapping(edge_index: torch.Tensor) -> dict[int, list[int]]:
     """Generates dictionary of positive items for each user
 
     Args:
@@ -11,118 +14,129 @@ def get_author_positive_papers(edge_index):
     Returns:
         dict: dictionary of positive items for each user
     """
-    author_pos_papers = {}
+    user_id_to_ground_truth_indices: dict[int, list[int]] = {}
     for i in range(edge_index.shape[1]):
-        author = edge_index[0][i].item()
-        paper = edge_index[1][i].item()
-        if author not in author_pos_papers:
-            author_pos_papers[author] = []
-        author_pos_papers[author].append(paper)
-    return author_pos_papers
+        user = edge_index[0][i].item()
+        ground_truth_index = edge_index[1][i].item()
+        if user not in user_id_to_ground_truth_indices:
+            user_id_to_ground_truth_indices[user] = []
+        user_id_to_ground_truth_indices[user].append(ground_truth_index)
+    return user_id_to_ground_truth_indices
 
 
-# computes recall@K and precision@K
-def RecallPrecision_ATk(groundTruth, r, k):
-    """Computers recall @ k and precision @ k
-
-    Args:
-        groundTruth (list): list of lists containing highly rated items of each user
-        r (list): list of lists indicating whether each top k item recommended to each user
-            is a top k ground truth item or not
-        k (intg): determines the top k items to compute precision and recall on
-
-    Returns:
-        tuple: recall @ k, precision @ k
-    """
-    num_correct_pred = torch.sum(
-        r, dim=-1
-    )  # number of correctly predicted items per user
-    # number of items liked by each user in the test set
-    user_num_liked = torch.Tensor(
-        [len(groundTruth[i]) for i in range(len(groundTruth))]
+def compute_recall_precision_at_k(
+    top_K_hits: torch.Tensor,
+    ground_truth_indicies: list[list[int]],
+    k: int,
+) -> tuple[float, float]:
+    # Now we can compute the metrics
+    num_correct_per_user = top_K_hits.sum(dim=1)
+    num_relevant_per_user = torch.tensor(
+        [len(ground_truth_indicies[i]) for i in range(len(ground_truth_indicies))],
+        dtype=torch.float32,
     )
-    recall = torch.mean(num_correct_pred / user_num_liked)
-    precision = torch.mean(num_correct_pred) / k
-    return recall.item(), precision.item()
+    recall_per_user = num_correct_per_user / num_relevant_per_user
+    precision_per_user = num_correct_per_user / k
+
+    recall = recall_per_user.mean().item()
+    precision = precision_per_user.mean().item()
+    return recall, precision
 
 
-# computes NDCG@K
-def NDCGatK_r(groundTruth, r, k):
-    """Computes Normalized Discounted Cumulative Gain (NDCG) @ k
-
-    Args:
-        groundTruth (list): list of lists containing highly rated items of each user
-        r (list): list of lists indicating whether each top k item recommended to each user
-            is a top k ground truth item or not
-        k (int): determines the top k items to compute ndcg on
-
-    Returns:
-        float: ndcg @ k
-    """
-    assert len(r) == len(groundTruth)
-
-    test_matrix = torch.zeros((len(r), k))
-
-    for i, items in enumerate(groundTruth):
-        length = min(len(items), k)
-        test_matrix[i, :length] = 1
-    max_r = test_matrix
-    idcg = torch.sum(max_r * 1.0 / torch.log2(torch.arange(2, k + 2)), axis=1)
-    dcg = r * (1.0 / torch.log2(torch.arange(2, k + 2)))
-    dcg = torch.sum(dcg, axis=1)
-    idcg[idcg == 0.0] = 1.0
-    ndcg = dcg / idcg
-    ndcg[torch.isnan(ndcg)] = 0.0
-    return torch.mean(ndcg).item()
-
-
-def get_metrics(
-    model,
-    edge_index,
-    exclude_edge_indices,
-    k,
-    batch_size,
+def calculate_metrics(
+    user_embedding: torch.Tensor,
+    item_embedding: torch.Tensor,
+    edge_index: torch.Tensor,
+    exclude_edge_indices: list[torch.Tensor],
+    k: int = 20,
+    batch_size=1024,
     device=None,
 ):
-    if device is None:
-        device = next(model.parameters()).device
+    user_ids = edge_index[0].unique()
 
-    user_embedding = model.authors_emb.weight.to(device)
-    item_embedding = model.papers_emb.weight.to(device)
+    # This mapping is taking the most time!
+    user_id_to_ground_truth_indices = generate_ground_truth_mapping(edge_index)
+    ###################################
 
-    users = edge_index[0].unique()
-    test_user_pos_items = get_author_positive_papers(edge_index)
+    exclude_user_id_to_ground_truth_indices = [
+        generate_ground_truth_mapping(exclude_edge_index)
+        for exclude_edge_index in exclude_edge_indices
+    ]
 
-    # Precompute “seen” items (train/val/test) per user to mask
-    exclude_dicts = [get_author_positive_papers(ei) for ei in exclude_edge_indices]
+    # The top K indices tensor is a [num_users, K] tensor
+    # It contains for each user the top K item indices predicted by the model
+    # the order is from most to least relevant in the 20 recommendations
+    # Be aware that the tensor is indexed, not by the user id itself, but by the position of the user id in the user_ids tensor
+    top_K_indices = torch.empty((user_ids.shape[0], k), dtype=torch.long, device=device)
+    for start in range(0, user_ids.shape[0], batch_size):
+        # We fist get the batched user ids, we could technically do all in one step by doing a big matrix multiplication
+        # But this would require too much memory, this is the reason for batching
+        batched_user_ids = user_ids[start : start + batch_size]
 
-    r_all = []
-    for start in range(0, users.numel(), batch_size):
-        batch_users = users[start : start + batch_size]
-        u_ids = batch_users.tolist()
-        u_emb = user_embedding[batch_users].to(device)  # [B, d]
+        # Then we get the embeddings for the batched user ids, we index each user embedding by the user id
+        # we made sure that the user IDs are starting at 0 and end at num_users - 1, so no ID is empty
+        batched_user_embeddings = user_embedding[batched_user_ids]
 
-        rating = torch.matmul(u_emb, item_embedding.T)  # [B, num_items]
+        # Now we appyl our decoder, this is the dot product between user and item embeddings
+        # For models which use non standard decoders we can not do this, but all our current models do use this simple decoder
+        # Teh result is a [batch_size, num_items] tensor where each entry is the score for that user-item combination
+        batched_scores = torch.matmul(batched_user_embeddings, item_embedding.T)
 
-        # mask excluded items for each user in this batch
-        for row, u in enumerate(u_ids):
+        # Now we need to mask out all user-item interactions that are already known from the exclude set
+        # These could be edges which are the supervision edges used during training
+        # When we would keep these, we would artifically lower our score as they would be treated as top recommendations i.e. False Positives
+        for batch_index, user_id in enumerate(batched_user_ids.tolist()):
             seen_items = set()
-            for d in exclude_dicts:
-                seen_items.update(d.get(u, []))
+            for exclude_dict in exclude_user_id_to_ground_truth_indices:
+                seen_items.update(exclude_dict.get(user_id, []))
+
             if seen_items:
-                rating[row, list(seen_items)] = -(1 << 10)
+                batched_scores[batch_index, list(seen_items)] = -1e9
 
-        _, top_K_items = torch.topk(rating, k=k, dim=1)  # [B, k]
+        # Now we get the top K indices for each user in the batch
+        # We then directly store them in the preallocated top_K_indices tensor
+        # This is indexed by the user ids in the batch
+        _, top_K_indices[start : start + batch_size] = torch.topk(
+            batched_scores,
+            k=k,
+            dim=1,
+        )
+    top_K_indices = top_K_indices.cpu()
 
-        # build r for this batch
-        for row, u in enumerate(u_ids):
-            ground_truth_items = test_user_pos_items[u]
-            label = [int(i in ground_truth_items) for i in top_K_items[row].tolist()]
-            r_all.append(label)
+    # The top K hits tensor is a [num_users, K] tensor
+    # If effectivly functions as "how many of the top K recommendations where actually in the ground truth"
+    # For example for K = 5 one example would be:
+    # user 4: [0, 1, 0, 0, 1] means that for user 4 the items at index 1 and 4 in the top K where in the ground truth, all others where not
+    # We repeat this for all users to get a [num_users, K] tensor
+    top_K_hits = torch.empty((user_ids.shape[0], k), dtype=torch.float32)
+    for user_index, user_id in enumerate(user_ids.tolist()):
+        # First we retrieve the ground truth indices for that user by looking it up in the dictionary we created earlier
+        ground_truth_indices = user_id_to_ground_truth_indices[user_id]
 
-    r = torch.tensor(r_all, dtype=torch.float32)
-    test_user_pos_items_list = [test_user_pos_items[u.item()] for u in users]
+        # Now we create the hit vector for that user
+        # This is as easy as iterating over the top K indices and checking if the given item id appears in the ground truth
+        # see `int(i in ground_truth_indices)`, this evaluates to 1 if true, 0 if false
+        # We just do that for all the items for a given user
+        top_K_hits[user_index] = torch.tensor(
+            [
+                int(i in ground_truth_indices)
+                for i in top_K_indices[user_index].tolist()
+            ],
+            dtype=torch.float32,
+        )
 
-    recall, precision = RecallPrecision_ATk(test_user_pos_items_list, r, k)
-    ndcg = NDCGatK_r(test_user_pos_items_list, r, k)
-    return recall, precision, ndcg
+    # This list is now indexed again by user position in user_ids tensor
+    # It stores for each user the list of ground truth item indices
+    # This effectively gives us access to how many items each user likes and what they are
+    ground_truth_indicies = [
+        user_id_to_ground_truth_indices[user_id.item()] for user_id in user_ids
+    ]
+
+    # Now we can compute recall and precision
+    recall, precision = compute_recall_precision_at_k(
+        top_K_hits,
+        ground_truth_indicies,
+        k,
+    )
+
+    return recall, precision

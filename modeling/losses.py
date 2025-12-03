@@ -3,9 +3,26 @@ import torch.nn.functional as F
 
 
 def BPR_loss(
+    pos_scores: torch.Tensor,
+    neg_scores: torch.Tensor,
+):
+    """Computes the Bayesian Personalized Ranking (BPR) loss.
+
+    Args:
+        pos_scores (Tensor): Predicted scores for positive samples.
+        neg_scores (Tensor): Predicted scores for negative samples.
+
+    Returns:
+        Tensor: Computed BPR loss.
+    """
+    loss = -torch.mean(F.logsigmoid(pos_scores - neg_scores))
+    return loss
+
+
+def BPR_loss_old(
     predictions: torch.Tensor,
-    edge_labels: torch.Tensor,
     edge_index: torch.Tensor,
+    edge_labels: torch.Tensor,
 ):
     author_ids = edge_index[0]
     # sort edges by author once

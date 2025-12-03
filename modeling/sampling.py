@@ -2,76 +2,69 @@ import torch
 import random
 
 
-# now we need to sample negative items for each positive edge in the supervision_edge_index
-def sample_negative_items(
-    edge_index,
-    negative_sample_ratio: int = 5,
-):
-    # we are now sampling N negative items for each positive edge
-    # if an edge is (author, paper), we will sample negative papers for that author
-    # I.e. (author, negative_paper) * N
-
-    num_positive_edges = edge_index.size(1)
-    num_negative_samples = num_positive_edges * negative_sample_ratio
-
-    paper_ids = edge_index[1].unique()
-    # now sample from paper_ids
-    sampled_negative_paper_ids = paper_ids[
-        torch.randint(0, paper_ids.size(0), (num_negative_samples,))
-    ]
-
-    negative_edge_index = torch.stack(
-        [
-            edge_index[0].repeat(negative_sample_ratio),
-            sampled_negative_paper_ids,
-        ],
-        dim=0,
-    )
-
-    return negative_edge_index
-
-
+# function which random samples a mini-batch of positive and negative samples
 def sample_minibatch(
-    supervision_edge_index,
-    batch_size: int = 1024,
-    negative_sample_ratio: int = 5,
+    edge_index: torch.Tensor,
+    batch_size: int = -1,
+    neg_sample_ratio: int = 1,
 ):
-    unique_authors = supervision_edge_index[0].unique()
+    """Randomly samples indices of a minibatch given an adjacency matrix
 
-    # sample a batch of authors
-    sampled_authors = unique_authors[
-        torch.randperm(unique_authors.size(0))[:batch_size]
-    ]
+    Args:
+        edge_index (torch.Tensor): 2 by N list of edges
+        batch_size (int): minibatch size
+        neg_sample_ratio (int): number of negative samples per positive sample
 
-    # for each author, get one positive edge
-    mask = torch.zeros(supervision_edge_index.size(1), dtype=torch.bool)
-    for author_id in sampled_authors:
-        author_mask = supervision_edge_index[0] == author_id
-        author_edges = torch.nonzero(author_mask).view(-1)
-        if author_edges.numel() > 0:
-            chosen_edge = author_edges[torch.randint(0, author_edges.size(0), (1,))]
-            mask[chosen_edge] = True
-    positive_edge_index = supervision_edge_index[:, mask]
+    Returns:
+        tuple: pos_edge_index, neg_edge_index
+    """
+    num_edges = edge_index.size(1)
+    unique_paper_ids = torch.unique(edge_index[1])
 
-    # now sample negative_sample_ratio negative items for each positive edge
-    negative_edge_index = sample_negative_items(
-        positive_edge_index,
-        negative_sample_ratio=negative_sample_ratio,
+    if batch_size == -1:
+        batch_size = num_edges
+
+    if neg_sample_ratio < 1:
+        raise ValueError("neg_sample_ratio must be >= 1")
+
+    # We first randomly sample positive edges
+    # This over-represents authors with many positive edges, but it's ok for now
+    sampled_pos_edge_idxs = torch.randint(0, num_edges, (batch_size,))
+
+    # Tile the author and positive paper indices according to neg_sample_ratio
+    # We want to have N negative samples per positive sample, but each positive sample needs to be duplicated N times
+    # This is important for the loss function later
+    sampled_author_ids = edge_index[0, sampled_pos_edge_idxs].repeat(neg_sample_ratio)
+    sampled_pos_paper_ids = edge_index[1, sampled_pos_edge_idxs].repeat(
+        neg_sample_ratio
     )
 
-    edge_index = torch.cat(
-        [positive_edge_index, negative_edge_index],
-        dim=1,
-    )
-    edge_labels = torch.cat(
+    pos_edge_index = torch.stack(
         [
-            torch.ones(positive_edge_index.size(1)),
-            torch.zeros(negative_edge_index.size(1)),
+            sampled_author_ids,
+            sampled_pos_paper_ids,
         ],
         dim=0,
     )
 
-    return edge_index, edge_labels
+    # Randomly sample negative paper indices
+    # This may lead to false negatives, but its ok for now
+    sampled_neg_paper_idxs = torch.randint(
+        0,
+        len(unique_paper_ids),
+        (batch_size * neg_sample_ratio,),
+    )
+    sampled_neg_paper_ids = unique_paper_ids[sampled_neg_paper_idxs]
+
+    neg_edge_index = torch.stack(
+        [
+            sampled_author_ids,
+            sampled_neg_paper_ids,
+        ],
+        dim=0,
+    )
+
+    return pos_edge_index, neg_edge_index
 
 
 def train_val_test_split(edge_index, train_ratio=0.8, val_ratio=0.1):

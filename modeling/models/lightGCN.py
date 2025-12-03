@@ -44,7 +44,11 @@ class LightGCN(MessagePassing):
         nn.init.normal_(self.authors_emb.weight, std=0.1)
         nn.init.normal_(self.papers_emb.weight, std=0.1)
 
-    def forward(self, edge_index: SparseTensor):
+    def forward(
+        self,
+        message_passing_edge_index: torch.Tensor,
+        supervision_edge_index: torch.Tensor,
+    ) -> tuple[Tensor, Tensor]:
         """Forward propagation of LightGCN Model.
 
         Args:
@@ -54,8 +58,42 @@ class LightGCN(MessagePassing):
             tuple (Tensor): e_u_k, e_u_0, e_i_k, e_i_0
         """
         # compute \tilde{A}: symmetrically normalized adjacency matrix
-        edge_index_norm = gcn_norm(
+
+        authors_emb_final, papers_emb_final = self.get_embeddings(
+            message_passing_edge_index
+        )
+
+        author_ids = supervision_edge_index[0]
+        paper_ids = supervision_edge_index[1]
+        authors_emb_final = authors_emb_final[author_ids]
+        papers_emb_final = papers_emb_final[paper_ids]
+
+        scores = (authors_emb_final * papers_emb_final).sum(dim=1)
+
+        return scores
+
+    def get_embeddings(
+        self,
+        edge_index: torch.Tensor,
+    ) -> Tensor:
+        """Gets the final node embeddings after K message passing layers.
+
+        Args:
+            edge_index (Tensor): Edge index tensor of shape [2, num_edges].
+
+        Returns:
+            Tensor: Final node embeddings of shape [num_nodes, embedding_dim].
+        """
+        adj_matrix = SparseTensor.from_edge_index(
             edge_index,
+            sparse_sizes=(
+                self.num_authors + self.num_papers,
+                self.num_authors + self.num_papers,
+            ),
+        )
+
+        adj_matrix_norm = gcn_norm(
+            adj_matrix,
             add_self_loops=self.add_self_loops,
         )
 
@@ -65,7 +103,7 @@ class LightGCN(MessagePassing):
 
         # multi-scale diffusion
         for _ in range(self.K):
-            emb_k = self.propagate(edge_index_norm, x=emb_k)
+            emb_k = self.propagate(adj_matrix_norm, x=emb_k)
             embs.append(emb_k)
 
         embs = torch.stack(embs, dim=1)
