@@ -16,11 +16,11 @@ def generate_ground_truth_mapping(edge_index: torch.Tensor) -> dict[int, list[in
     """
     user_id_to_ground_truth_indices: dict[int, list[int]] = {}
     for i in range(edge_index.shape[1]):
-        user = edge_index[0][i].item()
+        user_id = edge_index[0][i].item()
         ground_truth_index = edge_index[1][i].item()
-        if user not in user_id_to_ground_truth_indices:
-            user_id_to_ground_truth_indices[user] = []
-        user_id_to_ground_truth_indices[user].append(ground_truth_index)
+        if user_id not in user_id_to_ground_truth_indices:
+            user_id_to_ground_truth_indices[user_id] = []
+        user_id_to_ground_truth_indices[user_id].append(ground_truth_index)
     return user_id_to_ground_truth_indices
 
 
