@@ -14,6 +14,9 @@ from torch_scatter import scatter_mean
 import torch
 from torch import optim
 
+
+PPR_BATCH_SIZE = 10000 # compute for 10k nodes per get_ppr call due to memory issues
+
 # Lets start by loading the data
 data = torch.load("data/hetero_data_no_coauthor.pt", weights_only=False)
 
@@ -62,17 +65,27 @@ out_file = "data/hetero_data_no_coauthor_PPR_split_seed_1.pt"
 
 # Use train_message_passing_edge_index and its transpose to compute Personalized PageRank (PPR) scores
 
+
 print("Computing PPR")
 print("Number of nodes:", n_author+n_paper)
 print("Train message passing edge index shape", train_message_passing_edge_index.shape)
+
+target = torch.arange( # Compute PPR for the authors
+    0,
+    n_author,
+    dtype=torch.long,
+)
+
 ppr_edge_index, ppr_weights = get_ppr(
-    train_message_passing_edge_index, num_nodes=n_author+n_paper
+    train_message_passing_edge_index, num_nodes=n_author+n_paper, target=target
 )
 
 print("Done computing PPR")
 print("PPR edge index shape", ppr_edge_index.shape, "weights", ppr_weights.shape)
 
 result = {"edge_index": ppr_edge_index, "weights": ppr_weights}
+
 import pickle
 pickle.dump(result, open(out_file, "wb"))
 print("Saved PPR results")
+
