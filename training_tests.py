@@ -4,7 +4,6 @@ import torch
 import torch.nn.functional as F
 from modeling.sampling import prepare_training_data, sample_minibatch
 from modeling.losses import BPR_loss
-from modeling.gnn_metrics import get_metrics_from_embeddings
 from modeling.models.simple import Model
 import time
 
@@ -50,10 +49,17 @@ for i in range(ITERATIONS):
     model.train()
     print(f"--- EPOCH {i} ---", end="\r")
     start = time.time()
-    batch_edge_index, batch_edge_labels = sample_minibatch(
+    batch_edge_index, batch_edge_index_neg = sample_minibatch(
         supervision_edge_index,
         BATCH_SIZE,
-        negative_sample_ratio=5,
+        neg_sample_ratio=5,
+    )
+    batch_edge_labels = torch.cat(
+        [
+            torch.ones(batch_edge_index.size(1)),
+            torch.zeros(batch_edge_index_neg.size(1)),
+        ],
+        dim=0,
     )
     print(f"Sampling time: {round(time.time() - start, 2)}s", end=", ")
 
@@ -69,7 +75,6 @@ for i in range(ITERATIONS):
     train_loss = BPR_loss(
         y_pred,
         batch_edge_labels,
-        batch_edge_index,
     )
     print(f"Loss computation time: {round(time.time() - start, 2)}s", end=", ")
     optimizer.zero_grad()
