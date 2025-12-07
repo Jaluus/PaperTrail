@@ -27,7 +27,6 @@ class PPRBaselineModel(torch.nn.Module):
         ppr_scores_edge_index, ppr_scores_weights = get_ppr(
             edge_index=graph.edge_index,
             num_nodes=graph.num_nodes,
-            target=sampled_node_idx,
             alpha=0.15,
         )
         # For each node in edge_label_index[0], basically return the PPR score to the corresponding node in edge_label_index[1]

@@ -87,10 +87,7 @@ def get_user_item_matrix_PPR(user_ids):
 def get_user_item_matrix_PPR(user_ids):
     pppr_matrix = personalized_page_rank(edge_index=train_message_passing_edge_index, indices=user_ids, num_nodes=num_authors+num_papers, alpha=0.5)
     print(pppr_matrix.shape, len(user_ids), num_authors, num_papers)
-    # only keep the columns corresponding to papers
-    # return pppr_matrix[:, num_authors:]
     output = pppr_matrix[:, num_authors:]
-    # shuffle the output column-wise, just as a sanity check
     return output
 
 test_recall, test_precision = calculate_metrics(
@@ -106,4 +103,3 @@ test_recall, test_precision = calculate_metrics(
 print(
     f"[test_recall@{K}: {round(test_recall, 5)}, test_precision@{K}: {round(test_precision, 5)}"
 )
-

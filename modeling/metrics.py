@@ -51,6 +51,7 @@ def calculate_metrics(
     k: int = 20,
     batch_size=1024,
     device=None,
+    custom_user_item_matrix_fn=None
 ):
     user_ids = edge_index[0].unique()
 
@@ -62,7 +63,6 @@ def calculate_metrics(
         generate_ground_truth_mapping(exclude_edge_index)
         for exclude_edge_index in exclude_edge_indices
     ]
-
     # The top K indices tensor is a [num_users, K] tensor
     # It contains for each user the top K item indices predicted by the model
     # the order is from most to least relevant in the 20 recommendations
@@ -72,16 +72,19 @@ def calculate_metrics(
         # We fist get the batched user ids, we could technically do all in one step by doing a big matrix multiplication
         # But this would require too much memory, this is the reason for batching
         batched_user_ids = user_ids[start : start + batch_size]
-
-        # Then we get the embeddings for the batched user ids, we index each user embedding by the user id
-        # we made sure that the user IDs are starting at 0 and end at num_users - 1, so no ID is empty
-        batched_user_embeddings = user_embedding[batched_user_ids]
-
-        # Now we appyl our decoder, this is the dot product between user and item embeddings
-        # For models which use non standard decoders we can not do this, but all our current models do use this simple decoder
-        # Teh result is a [batch_size, num_items] tensor where each entry is the score for that user-item combination
-        batched_scores = torch.matmul(batched_user_embeddings, item_embedding.T)
-
+        if custom_user_item_matrix_fn is None:
+            # Then we get the embeddings for the batched user ids, we index each user embedding by the user id
+            # we made sure that the user IDs are starting at 0 and end at num_users - 1, so no ID is empty
+            batched_user_embeddings = user_embedding[batched_user_ids]
+            # Now we apply our decoder, this is the dot product between user and item embeddings
+            # For models which use non-standard decoders we can not do this, but all our current models do use this simple decoder
+            # Teh result is a [batch_size, num_items] tensor where each entry is the score for that user-item combination
+            batched_scores = torch.matmul(batched_user_embeddings, item_embedding.T)
+        else:
+            # Use the provided function that takes in user IDs (for PPR)
+            batched_scores = custom_user_item_matrix_fn(
+                batched_user_ids,
+            )
         # Now we need to mask out all user-item interactions that are already known from the exclude set
         # These could be edges which are the supervision edges used during training
         # When we would keep these, we would artifically lower our score as they would be treated as top recommendations i.e. False Positives
@@ -89,7 +92,6 @@ def calculate_metrics(
             seen_items = set()
             for exclude_dict in exclude_user_id_to_ground_truth_indices:
                 seen_items.update(exclude_dict.get(user_id, []))
-
             if seen_items:
                 batched_scores[batch_index, list(seen_items)] = -1e9
 
