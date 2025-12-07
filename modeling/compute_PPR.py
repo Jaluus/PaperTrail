@@ -12,10 +12,11 @@ import torch.nn.functional as F
 import time
 from torch_scatter import scatter_mean
 import torch
+from tqdm import tqdm
 from torch import optim
 
 
-PPR_BATCH_SIZE = 10000 # compute for 10k nodes per get_ppr call due to memory issues
+PPR_BATCH_SIZE = 1000 # compute for 10k authors per get_ppr call due to memory issues
 
 # Lets start by loading the data
 data = torch.load("data/hetero_data_no_coauthor.pt", weights_only=False)
@@ -70,22 +71,49 @@ print("Computing PPR")
 print("Number of nodes:", n_author+n_paper)
 print("Train message passing edge index shape", train_message_passing_edge_index.shape)
 
-target = torch.arange( # Compute PPR for the authors
-    0,
-    n_author,
-    dtype=torch.long,
-)
 
-ppr_edge_index, ppr_weights = get_ppr(
-    train_message_passing_edge_index, num_nodes=n_author+n_paper, target=target
-)
+for i in range(0, n_author, PPR_BATCH_SIZE):
+    print(f"Computing PPR for authors {i} to {min(i+PPR_BATCH_SIZE, n_author)}")
+    batch_target = torch.arange( # Compute PPR for the authors
+        i,
+        min(i+PPR_BATCH_SIZE, n_author),
+        dtype=torch.long,
+    )
+    ppr_edge_index_batch, ppr_weights_batch = get_ppr(
+        train_message_passing_edge_index, num_nodes=n_author+n_paper, target=batch_target, alpha=0.15
+    )
+    # Go through the edge index, and only store the edges that go from batch_target to papers. do not store any other weights/edges.
+    mask = (ppr_edge_index_batch[0] >= i) & (ppr_edge_index_batch[0] < min(i+PPR_BATCH_SIZE, n_author)) & (ppr_edge_index_batch[1] >= n_author)
+    ppr_edge_index_batch = ppr_edge_index_batch[:, mask]
+    ppr_weights_batch = ppr_weights_batch[mask]
+    if i == 0:
+        ppr_edge_index = ppr_edge_index_batch
+        ppr_weights = ppr_weights_batch
+    else:
+        ppr_edge_index = torch.cat([ppr_edge_index, ppr_edge_index_batch], dim=1)
+        ppr_weights = torch.cat([ppr_weights, ppr_weights_batch], dim=0)
 
 print("Done computing PPR")
 print("PPR edge index shape", ppr_edge_index.shape, "weights", ppr_weights.shape)
 
 result = {"edge_index": ppr_edge_index, "weights": ppr_weights}
-
 import pickle
 pickle.dump(result, open(out_file, "wb"))
 print("Saved PPR results")
 
+print("Precomputing the user_id to row range mapping")
+user_ids = ppr_edge_index[0]
+unique_user_ids, counts = torch.unique_consecutive(user_ids, return_counts=True)
+start_indices = torch.cat([counts.new_zeros(1), counts.cumsum(dim=0)[:-1]])
+end_indices = start_indices + counts - 1  # inclusive range
+user_id_to_row_ranges = {
+    user_id: (start, end)
+    for user_id, start, end in zip(
+        unique_user_ids.cpu().tolist(),
+        start_indices.cpu().tolist(),
+        end_indices.cpu().tolist(),
+    )
+}
+
+pickle.dump(user_id_to_row_ranges, open("data/hetero_data_no_coauthor_PPR_userid_to_rowidxs_seed_1.pt", "wb"))
+print("Saved the user_id to row range mapping")
