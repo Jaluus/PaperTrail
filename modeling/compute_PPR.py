@@ -1,3 +1,4 @@
+# This is deprecated! Simple use eval_PPR.py which uses the fast torch PPR implementation
 #!/usr/bin/env python
 # # Implementing a Recommender System using LightGCN
 from torch_geometric.utils.ppr import get_ppr
@@ -62,7 +63,7 @@ train_message_passing_edge_index = train_message_passing_edge_index + edge_index
 train_message_passing_edge_index_T = train_message_passing_edge_index[[1, 0], :].clone()
 # concat the _t and the normal one...
 train_message_passing_edge_index = torch.cat([train_message_passing_edge_index, train_message_passing_edge_index_T], dim=1)
-out_file = "data/hetero_data_no_coauthor_PPR_split_seed_1.pt"
+out_file = "data/hetero_data_no_coauthor_PPR_split_seed_1_alpha05.pt"
 
 # Use train_message_passing_edge_index and its transpose to compute Personalized PageRank (PPR) scores
 
@@ -80,7 +81,7 @@ for i in range(0, n_author, PPR_BATCH_SIZE):
         dtype=torch.long,
     )
     ppr_edge_index_batch, ppr_weights_batch = get_ppr(
-        train_message_passing_edge_index, num_nodes=n_author+n_paper, target=batch_target, alpha=0.15
+        train_message_passing_edge_index, num_nodes=n_author+n_paper, target=batch_target, alpha=0.5
     )
     # Go through the edge index, and only store the edges that go from batch_target to papers. do not store any other weights/edges.
     mask = (ppr_edge_index_batch[0] >= i) & (ppr_edge_index_batch[0] < min(i+PPR_BATCH_SIZE, n_author)) & (ppr_edge_index_batch[1] >= n_author)
@@ -115,5 +116,5 @@ user_id_to_row_ranges = {
     )
 }
 
-pickle.dump(user_id_to_row_ranges, open("data/hetero_data_no_coauthor_PPR_userid_to_rowidxs_seed_1.pt", "wb"))
+pickle.dump(user_id_to_row_ranges, open("data/hetero_data_no_coauthor_PPR_userid_to_rowidxs_seed_1_alpha05.pt", "wb"))
 print("Saved the user_id to row range mapping")
