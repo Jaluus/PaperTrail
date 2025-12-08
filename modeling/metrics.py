@@ -5,7 +5,7 @@ from functools import lru_cache
 # We are caching the function as it can be called multiple times with the same edge_index during evaluation
 # We only need to compute this once, as the edge_index does not change
 @lru_cache(maxsize=None)
-def generate_ground_truth_mapping(edge_index: torch.Tensor) -> dict[int, list[int]]:
+def generate_ground_truth_mapping(edge_index: torch.Tensor) -> dict[int, set[int]]:
     """Generates dictionary of positive items for each user
 
     Args:
@@ -14,14 +14,14 @@ def generate_ground_truth_mapping(edge_index: torch.Tensor) -> dict[int, list[in
     Returns:
         dict: dictionary of positive items for each user
     """
-    user_id_to_ground_truth_indices: dict[int, list[int]] = {}
+    user_id_to_ground_truth_ids: dict[int, set[int]] = {}
     for i in range(edge_index.shape[1]):
         user_id = edge_index[0][i].item()
-        ground_truth_index = edge_index[1][i].item()
-        if user_id not in user_id_to_ground_truth_indices:
-            user_id_to_ground_truth_indices[user_id] = []
-        user_id_to_ground_truth_indices[user_id].append(ground_truth_index)
-    return user_id_to_ground_truth_indices
+        ground_truth_id = edge_index[1][i].item()
+        if user_id not in user_id_to_ground_truth_ids:
+            user_id_to_ground_truth_ids[user_id] = set()
+        user_id_to_ground_truth_ids[user_id].add(ground_truth_id)
+    return user_id_to_ground_truth_ids
 
 
 def compute_recall_precision_at_k(
@@ -55,10 +55,10 @@ def calculate_metrics(
     user_ids = edge_index[0].unique()
 
     # This mapping is taking the most time!
-    user_id_to_ground_truth_indices = generate_ground_truth_mapping(edge_index)
+    user_id_to_ground_truth_ids = generate_ground_truth_mapping(edge_index)
     ###################################
 
-    exclude_user_id_to_ground_truth_indices = [
+    exclude_user_id_to_ground_truth_ids = [
         generate_ground_truth_mapping(exclude_edge_index)
         for exclude_edge_index in exclude_edge_indices
     ]
@@ -87,8 +87,8 @@ def calculate_metrics(
         # When we would keep these, we would artifically lower our score as they would be treated as top recommendations i.e. False Positives
         for batch_index, user_id in enumerate(batched_user_ids.tolist()):
             seen_items = set()
-            for exclude_dict in exclude_user_id_to_ground_truth_indices:
-                seen_items.update(exclude_dict.get(user_id, []))
+            for exclude_set in exclude_user_id_to_ground_truth_ids:
+                seen_items.update(exclude_set.get(user_id, set()))
 
             if seen_items:
                 batched_scores[batch_index, list(seen_items)] = -1e9
@@ -111,7 +111,7 @@ def calculate_metrics(
     top_K_hits = torch.empty((user_ids.shape[0], k), dtype=torch.float32)
     for user_index, user_id in enumerate(user_ids.tolist()):
         # First we retrieve the ground truth indices for that user by looking it up in the dictionary we created earlier
-        ground_truth_indices = user_id_to_ground_truth_indices[user_id]
+        ground_truth_indices = user_id_to_ground_truth_ids[user_id]
 
         # Now we create the hit vector for that user
         # This is as easy as iterating over the top K indices and checking if the given item id appears in the ground truth
@@ -129,7 +129,7 @@ def calculate_metrics(
     # It stores for each user the list of ground truth item indices
     # This effectively gives us access to how many items each user likes and what they are
     ground_truth_indicies = [
-        user_id_to_ground_truth_indices[user_id.item()] for user_id in user_ids
+        user_id_to_ground_truth_ids[user_id.item()] for user_id in user_ids
     ]
 
     # Now we can compute recall and precision

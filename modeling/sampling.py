@@ -5,6 +5,7 @@ import random
 # function which random samples a mini-batch of positive and negative samples
 def sample_minibatch(
     edge_index: torch.Tensor,
+    paper_ids: torch.Tensor,
     batch_size: int = -1,
     neg_sample_ratio: int = 1,
 ):
@@ -19,7 +20,6 @@ def sample_minibatch(
         tuple: pos_edge_index, neg_edge_index
     """
     num_edges = edge_index.size(1)
-    unique_paper_ids = torch.unique(edge_index[1])
 
     if batch_size == -1:
         batch_size = num_edges
@@ -51,10 +51,10 @@ def sample_minibatch(
     # This may lead to false negatives, but its ok for now
     sampled_neg_paper_idxs = torch.randint(
         0,
-        len(unique_paper_ids),
+        len(paper_ids),
         (batch_size * neg_sample_ratio,),
     )
-    sampled_neg_paper_ids = unique_paper_ids[sampled_neg_paper_idxs]
+    sampled_neg_paper_ids = paper_ids[sampled_neg_paper_idxs]
 
     neg_edge_index = torch.stack(
         [

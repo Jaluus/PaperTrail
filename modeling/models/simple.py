@@ -7,26 +7,27 @@ class GNN(torch.nn.Module):
     def __init__(
         self,
         embedding_dim: int,
+        num_layers: int,
     ):
         super().__init__()
 
-        self.conv_1 = SAGEConv(
-            embedding_dim,
-            embedding_dim,
-            aggr="mean",
-            project=False,
+        self.convs = torch.nn.ModuleList(
+            [
+                SAGEConv(
+                    embedding_dim,
+                    embedding_dim,
+                    aggr="mean",
+                    project=True,
+                )
+                for _ in range(num_layers - 1)
+            ]
         )
-        self.conv_2 = SAGEConv(
+
+        self.out_conv = SAGEConv(
             embedding_dim,
             embedding_dim,
             aggr="mean",
-            project=False,
-        )
-        self.conv_3 = SAGEConv(
-            embedding_dim,
-            embedding_dim,
-            aggr="mean",
-            project=False,
+            project=True,
         )
 
     def forward(
@@ -34,11 +35,8 @@ class GNN(torch.nn.Module):
         x: torch.Tensor,
         edge_index: torch.Tensor,
     ) -> torch.Tensor:
-        x = self.conv_1(x, edge_index)
-        x = F.relu(x)
+        for conv in self.convs:
+            x = conv(x, edge_index)
+            x = F.relu(x)
 
-        x = self.conv_2(x, edge_index)
-        x = F.relu(x)
-
-        x = self.conv_3(x, edge_index)
-        return x
+        return self.out_conv(x, edge_index)
