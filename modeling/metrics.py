@@ -53,6 +53,7 @@ def calculate_metrics(
     device=None,
 ):
     user_ids = edge_index[0].unique()
+    num_user_ids = user_ids.shape[0]
 
     # This mapping is taking the most time!
     user_id_to_ground_truth_ids = generate_ground_truth_mapping(edge_index)
@@ -67,8 +68,8 @@ def calculate_metrics(
     # It contains for each user the top K item indices predicted by the model
     # the order is from most to least relevant in the 20 recommendations
     # Be aware that the tensor is indexed, not by the user id itself, but by the position of the user id in the user_ids tensor
-    top_K_indices = torch.empty((user_ids.shape[0], k), dtype=torch.long, device=device)
-    for start in range(0, user_ids.shape[0], batch_size):
+    top_K_indices = torch.empty((num_user_ids, k), dtype=torch.long, device=device)
+    for start in range(0, num_user_ids, batch_size):
         # We fist get the batched user ids, we could technically do all in one step by doing a big matrix multiplication
         # But this would require too much memory, this is the reason for batching
         batched_user_ids = user_ids[start : start + batch_size]
@@ -108,7 +109,7 @@ def calculate_metrics(
     # For example for K = 5 one example would be:
     # user 4: [0, 1, 0, 0, 1] means that for user 4 the items at index 1 and 4 in the top K where in the ground truth, all others where not
     # We repeat this for all users to get a [num_users, K] tensor
-    top_K_hits = torch.empty((user_ids.shape[0], k), dtype=torch.float32)
+    top_K_hits = torch.empty((num_user_ids, k), dtype=torch.float32)
     for user_index, user_id in enumerate(user_ids.tolist()):
         # First we retrieve the ground truth indices for that user by looking it up in the dictionary we created earlier
         ground_truth_indices = user_id_to_ground_truth_ids[user_id]
