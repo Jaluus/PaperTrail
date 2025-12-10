@@ -49,11 +49,32 @@ The paper nodes are connected to author nodes via authorship edges.
 
 The dataset is available for download as a PyG graph from httpXYZ.
 
+## Data Splitting
+
+
+
 ## Models
 
 We use a simple dot product decoder to compute the scores between authors and papers based on their embeddings ($h_i$ and $h_j'$):
 
 $f(h_i, h_j') = h_i^T h_j'$
+
+### Popularity baseline
+
+As a simple baseline, we consider a _popularity-based_ recommendation system.
+Here, we assume that the score between an author and a paper is simply the product of their degrees, so basically the
+number of the papers the author has co-authored, multiplied by the number of authors of the paper. This extremely simple
+baseline serves as an additional sanity check whether our GNN-based models can outperform such a naive approach.
+
+### Text dot product baseline
+
+Likely, similar papers to the ones an author has already written are relevant to the author.
+Therefore, we consider a baseline without using the graph structure, where we simply average the embeddings of the
+papers an author has coauthored, and set this to be the author embedding.
+Of course, the embedding averages are computed using the training message-passing index and not the full graph in order
+to avoid data leakage.
+
+### GNN-based Models
 
 ## Metrics
 
