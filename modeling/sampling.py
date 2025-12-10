@@ -67,6 +67,62 @@ def sample_minibatch(
     return pos_edge_index, neg_edge_index
 
 
+def train_val_test_split_user_stratified(edge_index, N_users, train_ratio=0.8, val_ratio=0.1, supervision_ratio=0.3, random_seed=42):
+    """Splits edge_index into train, validation, and test sets.
+
+    Args:
+        edge_index (Tensor): Edge index tensor of shape [2, num_edges].
+        train_ratio (float, optional): Proportion of edges to include in the training set. Defaults to 0.8.
+        val_ratio (float, optional): Proportion of edges to include in the validation set. Defaults to 0.1.
+        supervision_ratio (float, optional): Proportion of edges out of the train set to include in the validation set. Defaults to 0.3.
+
+    Returns:
+        tuple: train_edge_index, val_edge_index, test_edge_index
+    """
+    num_edges = edge_index.size(1)
+    num_train = int(num_edges * train_ratio)
+    num_train_message_passing = int(num_train * (1 - supervision_ratio))
+    num_train_supervision = num_train - num_train_message_passing
+    num_val = int(num_edges * val_ratio)
+    user_degrees = torch.zeros(N_users, dtype=torch.long)
+    for user_id in edge_index[0]:
+        user_degrees[user_id] += 1
+    degree_one_users = set((user_degrees == 1).nonzero(as_tuple=True)[0].tolist())
+    # Now, get the edge index from degree one users
+    degree_one_user_edge_indices = []
+    non_degree_one_user_edge_indices = []
+    for i in range(edge_index.size(1)):
+        if edge_index[0, i].item() in degree_one_users:
+            degree_one_user_edge_indices.append(i)
+        else:
+            non_degree_one_user_edge_indices.append(i)
+    degree_one_user_edge_indices = torch.tensor(degree_one_user_edge_indices)
+    edge_index_degree_one = edge_index[:, degree_one_user_edge_indices]
+    # random shuffle the non_degree_one_user_edge_indices
+    # random generator
+    rng = random.Random(random_seed)
+    # shuffle non_
+    rng.shuffle(non_degree_one_user_edge_indices)
+    n_train = num_train_message_passing - edge_index_degree_one.size(1)
+    if n_train < 0:
+        raise ValueError("too many degree one user edges!")
+    train_message_passing_edge_index = edge_index[:, non_degree_one_user_edge_indices[:n_train]]
+    # Now, concat the degree one user edges to the train_message_passing_edge_index
+    train_message_passing_edge_index = torch.cat(
+        [train_message_passing_edge_index, edge_index_degree_one], dim=1
+    )
+    train_supervision_edge_index = edge_index[:, non_degree_one_user_edge_indices[n_train:n_train + num_train_supervision]]
+    val_edge_index = edge_index[:, non_degree_one_user_edge_indices[n_train + num_train_supervision:n_train + num_train_supervision + num_val]]
+    test_edge_index = edge_index[:, non_degree_one_user_edge_indices[n_train + num_train_supervision + num_val:]]
+    print("Train message passing edges:", train_message_passing_edge_index.size(1))
+    print("Train supervision edges:", train_supervision_edge_index.size(1))
+    print("Validation edges:", val_edge_index.size(1))
+    print("Test edges:", test_edge_index.size(1))
+    print("Total edges:", edge_index.size(1))
+    return train_message_passing_edge_index, train_supervision_edge_index, val_edge_index, test_edge_index
+
+
+
 def train_val_test_split(edge_index, train_ratio=0.8, val_ratio=0.1):
     """Splits edge_index into train, validation, and test sets.
 

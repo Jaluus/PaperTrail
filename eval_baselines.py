@@ -15,7 +15,7 @@ from torch_scatter import scatter_mean
 import torch
 from torch import optim
 
-# Lets start by loading the data
+# Let's start by loading the data
 data = torch.load("data/hetero_data_no_coauthor.pt", weights_only=False)
 
 # We only need the edges for light GCN
@@ -58,6 +58,7 @@ val_edge_index = edge_index[:, val_indices]
 test_edge_index = edge_index[:, test_indices]
 
 K = 20
+
 
 models = {
     "DegreeBaseline": CentralityBaseline(

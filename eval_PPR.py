@@ -7,8 +7,7 @@ from modeling.metrics import calculate_metrics
 import torch
 from torch_ppr import personalized_page_rank
 
-
-# Lets start by loading the data
+# Let's start by loading the data
 data = torch.load("data/hetero_data_no_coauthor.pt", weights_only=False)
 
 # We only need the edges for light GCN
@@ -26,8 +25,8 @@ num_authors, num_papers = len(author_ids), len(paper_ids)
 num_interactions = edge_index.shape[1]
 all_indices = [i for i in range(num_interactions)]
 
-# Here we enumearte the edges
-# Then we split them into train, val, test sets
+# Here, we enumerate the edges
+# Then, we split them into train, val, test sets
 train_indices, test_indices = train_test_split(
     all_indices,
     test_size=0.2,
@@ -85,7 +84,7 @@ def get_user_item_matrix_PPR(user_ids):
 
 
 def get_user_item_matrix_PPR(user_ids):
-    pppr_matrix = personalized_page_rank(edge_index=train_message_passing_edge_index, indices=user_ids, num_nodes=num_authors+num_papers, alpha=0.5)
+    pppr_matrix = personalized_page_rank(edge_index=train_supervision_edge_index, indices=user_ids, num_nodes=num_authors+num_papers, alpha=0.5)
     print(pppr_matrix.shape, len(user_ids), num_authors, num_papers)
     output = pppr_matrix[:, num_authors:]
     return output

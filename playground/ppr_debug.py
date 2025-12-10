@@ -20,10 +20,11 @@ print(f"Number of edges: {edge_index.shape[1]}")
 # split the edges of the graph using a 80/10/10 train/validation/test split
 num_authors, num_papers = len(author_ids), len(paper_ids)
 
-ppr_result = pickle.load(open("data/hetero_data_no_coauthor_PPR_split_seed_1.pt", "rb"))
+ppr_result = pickle.load(open("data/hetero_data_no_coauthor_PPR_split_seed_1_alpha05.pt", "rb"))
+
 # dict with keys edge_index, weights
 PPR_edges, PPR_weights = ppr_result["edge_index"], ppr_result["weights"] # those are large sparse tensors, i.e. 54 million edges! Needs to work efficiently
-
+user_id_to_row_ranges = pickle.load(open("data/hetero_data_no_coauthor_PPR_userid_to_rowidxs_seed_1_alpha05.pt", "rb"))
 def get_score_matrix_for_users(users_list, n_users, n_papers, ppr_edge_index, ppr_weights, user_id_to_row_idxs):
     score_matrix = torch.zeros((len(users_list), n_papers))
     for i, user_id in enumerate(users_list):
@@ -35,7 +36,5 @@ def get_score_matrix_for_users(users_list, n_users, n_papers, ppr_edge_index, pp
             score_matrix[i, paper_ids] = weights
     return score_matrix
 
-
-user_id_to_row_ranges = pickle.load(open("data/hetero_data_no_coauthor_PPR_userid_to_rowidxs_seed_1.pt", "rb"))
 
 get_score_matrix_for_users([0, 1, 2], num_authors, num_papers, PPR_edges, PPR_weights, user_id_to_row_ranges)

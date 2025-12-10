@@ -1,4 +1,5 @@
 import torch
+import random
 
 def get_coauthor_edges(edge_index_bipartite):
     # edge_index_bipartite: [2, num_edges] where edges are from authors to papers
@@ -10,12 +11,19 @@ def get_coauthor_edges(edge_index_bipartite):
     paper_to_authors = {key: set(value) for key, value in paper_to_authors.items()}
     coauthorship_edge_index = [[], []]
     for authors in paper_to_authors.values():
-        authors = list(authors)
-        for i in range(len(authors)):
-            for j in range(len(authors)):
-                if i != j:
-                    coauthorship_edge_index[0].append(authors[i])
-                    coauthorship_edge_index[1].append(authors[j])
+        authors_list = list(authors)
+        pairs = []
+        if len(authors_list) <= 3:
+            for i in range(len(authors_list)):
+                for j in range(len(authors_list)):
+                    if i != j:
+                        pairs.append((i, j))
+        else: #otherwise, sample 5 random pairs
+            for _ in range(5):
+                i, j = random.sample(range(len(authors_list)), 2)
+                pairs.append((i, j))
+        for (i, j) in pairs:
+            coauthorship_edge_index[0].append(authors_list[i])
+            coauthorship_edge_index[1].append(authors_list[j])
     return torch.tensor(coauthorship_edge_index)
-
 

@@ -48,6 +48,8 @@ class LightGCN(MessagePassing):
         self,
         message_passing_edge_index: torch.Tensor,
         supervision_edge_index: torch.Tensor,
+        x_author: torch.Tensor,
+        x_paper: torch.Tensor
     ) -> tuple[Tensor, Tensor]:
         """Forward propagation of LightGCN Model.
 
@@ -60,7 +62,7 @@ class LightGCN(MessagePassing):
         # compute \tilde{A}: symmetrically normalized adjacency matrix
 
         authors_emb_final, papers_emb_final = self.get_embeddings(
-            message_passing_edge_index
+            message_passing_edge_index, x_author, x_paper
         )
 
         author_ids = supervision_edge_index[0]
@@ -75,6 +77,8 @@ class LightGCN(MessagePassing):
     def get_embeddings(
         self,
         edge_index: torch.Tensor,
+        x_author,
+        x_paper
     ) -> Tensor:
         """Gets the final node embeddings after K message passing layers.
 
@@ -109,10 +113,16 @@ class LightGCN(MessagePassing):
         embs = torch.stack(embs, dim=1)
         emb_final = torch.mean(embs, dim=1)  # E^K
 
+
+
         authors_emb_final, papers_emb_final = torch.split(
             emb_final,
             [self.num_authors, self.num_papers],
         )  # splits into e_u^K and e_i^K
+
+        # concat x_author and x_paper to the embeddings
+        authors_emb_final = torch.cat([authors_emb_final, x_author], dim=1)
+        papers_emb_final = torch.cat([papers_emb_final, x_paper], dim=1)
 
         return authors_emb_final, papers_emb_final
 

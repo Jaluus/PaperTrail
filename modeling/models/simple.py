@@ -10,7 +10,6 @@ class GNN(torch.nn.Module):
         embedding_dim: int,
     ):
         super().__init__()
-
         self.conv_1 = SAGEConv(
             embedding_dim,
             embedding_dim,
@@ -23,14 +22,27 @@ class GNN(torch.nn.Module):
             aggr="mean",
             project=False,
         )
+        # as a first approximation, just pass messages in both directions. the bidirectional graph inherently has two node types and this is not fully correct, but lets just try to see if it learns anything
+        self.conv_1_T = SAGEConv(
+            embedding_dim,
+            embedding_dim,
+            aggr="mean",
+            project=False,
+        )
+        self.conv_2_T = SAGEConv(
+            embedding_dim,
+            embedding_dim,
+            aggr="mean",
+            project=False,
+        )
 
     def forward(
         self,
         x: torch.Tensor,
         edge_index: torch.Tensor,
     ) -> torch.Tensor:
-        x = self.conv_1(x, edge_index)
-        x = self.conv_2(x, edge_index)
+        x = self.conv_1(x, edge_index) + self.conv_1_T(x, edge_index.flip(0))
+        x = self.conv_2(x, edge_index) + self.conv_2_T(x, edge_index.flip(0))
         return x
 
 
@@ -40,9 +52,7 @@ class Model(torch.nn.Module):
         embedding_dim: int,
     ):
         super().__init__()
-
         self.embedding_dim = embedding_dim
-
         self.gnn = GNN(embedding_dim)
 
     def forward(
@@ -54,10 +64,10 @@ class Model(torch.nn.Module):
 
         new_node_embeddings = self.gnn(
             node_embeddings,
-            message_passing_edge_index,
+            message_passing_edge_index
         )
 
-        # now compute dot product for each edge
+        # Now compute dot product for each edge
         src_node_ids = supervision_edge_index[0]
         dst_node_ids = supervision_edge_index[1]
 
@@ -74,6 +84,6 @@ class Model(torch.nn.Module):
 
         new_node_embeddings = self.gnn(
             node_embeddings,
-            message_passing_edge_index,
+            message_passing_edge_index
         )
         return new_node_embeddings

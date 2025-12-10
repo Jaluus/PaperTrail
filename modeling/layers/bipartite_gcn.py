@@ -11,6 +11,8 @@ class BipartiteGCN(torch.nn.Module):
         embedding_dim: int,
         n_layers = 2,
         aggr = 'sum',
+        coauthor_to_author_edges = False,
+        ppr_edge_index = None,
     ):
         super().__init__()
         self.aggr = aggr
@@ -22,9 +24,14 @@ class BipartiteGCN(torch.nn.Module):
                 'paper_to_author': torch.nn.Linear(embedding_dim, embedding_dim),
                 'author_self_loop': torch.nn.Linear(embedding_dim, embedding_dim),
                 'paper_self_loop': torch.nn.Linear(embedding_dim, embedding_dim),
-                'coauthor_to_author': torch.nn.Linear(embedding_dim, embedding_dim),
+                #'coauthor_to_author': torch.nn.Linear(embedding_dim, embedding_dim),
             })
+            if coauthor_to_author_edges:
+                conv['coauthor_to_author'] = torch.nn.Linear(embedding_dim, embedding_dim)
+            if ppr_edge_index:
+                conv['author_paper_ppr_edges'] = torch.nn.Linear(embedding_dim, embedding_dim)
             self.convs.append(conv)
+
 
     def get_embeddings(
         self,
@@ -32,6 +39,7 @@ class BipartiteGCN(torch.nn.Module):
         x_paper: torch.Tensor,
         edge_index: torch.Tensor,
         coauthors_edge_index: torch.Tensor = None,
+        ppr_edge_index: torch.Tensor = None,
     ) -> torch.Tensor:
         # The edge index should be indexed from author to paper, without offsetting. It should point author -> paper only
         for conv in self.convs:
@@ -58,7 +66,7 @@ class BipartiteGCN(torch.nn.Module):
             # Update features with self-loops
             x_paper = aggregated_messages_to_papers + conv['paper_self_loop'](x_paper)
             x_author = aggregated_messages_to_authors + conv['author_self_loop'](x_author)
-            if coauthors_edge_index is not None:
+            if coauthors_edge_index is not None and 'coauthor_to_author' in conv:
                 coauthor_src = coauthors_edge_index[0]
                 coauthor_dst = coauthors_edge_index[1]
                 coauthor_messages = conv['coauthor_to_author'](x_author[coauthor_src])
@@ -82,12 +90,14 @@ class BipartiteGCN(torch.nn.Module):
         edge_index: torch.Tensor,
         coauthor_edge_index: torch.Tensor,
         supervision_edge_index: torch.Tensor,
+        ppr_edge_index: torch.Tensor = None,
     ) -> torch.Tensor:
         x_author, x_paper = self.get_embeddings(
             x_author,
             x_paper,
             edge_index,
-            coauthor_edge_index
+            coauthor_edge_index,
+            ppr_edge_index
         )
         author_ids = supervision_edge_index[0]
         paper_ids = supervision_edge_index[1]
