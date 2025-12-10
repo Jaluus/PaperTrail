@@ -196,3 +196,93 @@ def prepare_training_data(
         val_edge_index,
         test_edge_index,
     )
+
+def train_val_test_split_user_stratified(edge_index, N_users, train_ratio=0.8, val_ratio=0.1, supervision_ratio=0.3,
+                                         random_seed=42, return_idx=False):
+    """Splits edge_index into train, validation, and test sets.
+    Args:
+        edge_index (Tensor): Edge index tensor of shape [2, num_edges].
+        train_ratio (float, optional): Proportion of edges to include in the training set. Defaults to 0.8.
+        val_ratio (float, optional): Proportion of edges to include in the validation set. Defaults to 0.1.
+        supervision_ratio (float, optional): Proportion of edges out of the train set to include in the validation set. Defaults to 0.3.
+    Returns:
+        tuple: train_edge_index, val_edge_index, test_edge_index
+    """
+    num_edges = edge_index.size(1)
+    num_train = int(num_edges * train_ratio)
+    num_train_message_passing = int(num_train * (1 - supervision_ratio))
+    num_train_supervision = num_train - num_train_message_passing
+    num_val = int(num_edges * val_ratio)
+    user_degrees = torch.zeros(N_users, dtype=torch.long)
+    user_id_to_edge_idx = {}
+    for edge_idx, user_id in enumerate(edge_index[0].tolist()):
+        user_degrees[user_id] += 1
+        if user_id not in user_id_to_edge_idx:
+            user_id_to_edge_idx[user_id] = []
+        user_id_to_edge_idx[user_id].append(edge_idx)
+    rng = random.Random(random_seed)
+    initial_sampled_edge_idx = [] # store at max one edge idx per user
+    other_edge_idx = []
+    for user_id in range(N_users):
+        edge_indices = user_id_to_edge_idx.get(user_id, [])
+        # sample one edge idx for this user
+        if num_train_message_passing > 0:
+            sampled_edge_idx = rng.choice(edge_indices)
+            initial_sampled_edge_idx.append(sampled_edge_idx)
+            num_train_message_passing -= 1
+        else:
+            sampled_edge_idx = -1
+        # add the rest edge idx to other_edge_idx
+        for edge_idx in edge_indices:
+            if edge_idx != sampled_edge_idx:
+                other_edge_idx.append(edge_idx)
+    assert len(other_edge_idx) + len(initial_sampled_edge_idx) == num_edges
+    rng.shuffle(other_edge_idx)
+    train_message_passing_edge_index = edge_index[:, other_edge_idx[:num_train_message_passing]]
+    train_message_passing_edge_index = torch.cat(
+        [train_message_passing_edge_index, edge_index[:, initial_sampled_edge_idx]], dim=1
+    )
+    train_MP_idx = other_edge_idx[:num_train_message_passing] + initial_sampled_edge_idx
+    train_supervision_idx = other_edge_idx[num_train_message_passing:num_train_message_passing + num_train_supervision]
+    train_supervision_edge_index = edge_index[:, train_supervision_idx]
+    val_idx = other_edge_idx[num_train_message_passing + num_train_supervision:num_train_message_passing + num_train_supervision + num_val]
+    val_edge_index = edge_index[:, val_idx]
+    test_idx = other_edge_idx[num_train_message_passing + num_train_supervision + num_val:]
+    test_edge_index = edge_index[:, test_idx]
+    print("Train message passing edges:", train_message_passing_edge_index.size(1))
+    print("Train supervision edges:", train_supervision_edge_index.size(1))
+    print("Validation edges:", val_edge_index.size(1))
+    print("Test edges:", test_edge_index.size(1))
+    print("Total edges:", edge_index.size(1))
+    if return_idx:
+        return train_MP_idx, train_supervision_idx, val_idx, test_idx
+    return train_message_passing_edge_index, train_supervision_edge_index, val_edge_index, test_edge_index
+
+
+def stratified_random_link_split(data, edge_type, rev_edge_type, train_ratio=0.8, val_ratio=0.1, supervision_ratio=0.3,
+                                 random_seed=42):
+    train_MP_idx, train_supervision_idx, val_idx, test_idx = train_val_test_split_user_stratified(
+        data[edge_type].edge_index,
+        N_users=data[edge_type[0]].num_nodes,
+        train_ratio=train_ratio,
+        val_ratio=val_ratio,
+        supervision_ratio=supervision_ratio,
+        random_seed=random_seed,
+        return_idx=True
+    )
+    # Make three copies of data: train, val, test
+    edge_index = data[edge_type].edge_index
+    train_MP_idx = torch.tensor(train_MP_idx, dtype=torch.long)
+    train = data.clone()
+    val = data.clone()
+    test = data.clone()
+    # set edge_index for train, val, test
+    for data_object in [train, val, test]:
+        data_object[edge_type].edge_index = data[edge_type].edge_index[:, train_MP_idx]
+        data_object[rev_edge_type].edge_index = data[rev_edge_type].edge_index[:, train_MP_idx]
+    train[edge_type].edge_label_index = edge_index[:, train_supervision_idx]
+    val[edge_type].edge_label_index = edge_index[:, val_idx]
+    test[edge_type].edge_label_index = edge_index[:, test_idx]
+    return train, val, test
+
+
