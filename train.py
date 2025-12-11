@@ -3,12 +3,16 @@ from modeling.sampling import sample_minibatch_V2
 from modeling.metrics import calculate_metrics
 from modeling.losses import BPR_loss
 import torch_geometric.transforms as T
+from modeling.models.lightGCN2 import LightGCN
 from modeling.models.simple_V2 import Model
-
+import pickle
 import time
-
 import torch
 from torch import optim
+from modeling.utils import add_coauthor_edges
+torch.manual_seed(42)
+torch.cuda.manual_seed_all(42)
+
 
 # Lets start by loading the data
 data = torch.load("data/hetero_data_filtered_3_2.pt", weights_only=False)
