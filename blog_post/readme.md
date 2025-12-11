@@ -16,9 +16,9 @@ that align with their research interests and contribute meaningfully to their wo
 To address this challenge, we attempt to build a recommendation system for conference authors.
 Here, we describe the steps taken from the dataset collection to training and the obtained results.
 
+![Neurips_N_Papers_vs_year](neurips_papers_vs_year.png "Neurips papers")
 
-![Neurips_N_Papers_vs_year](neurips_papers_vs_year.png "The growth of the number of accepted NeurIPS papers over the years. Source: https://papercopilot.com/statistics/NeurIPS-statistics/")
-
+_The growth of the number of accepted NeurIPS papers over the years. Source: https://papercopilot.com/statistics/NeurIPS-statistics/_
 
 ## Dataset Construction and Preprocessing
 
@@ -33,8 +33,9 @@ performance.
 We preprocess the data and filter it by removing the papers with only one author, as well as the paper with 450
 different authors (see figure below).
 
-![coauthor_distr](coauthor_distribution.png "Distribution of the number of coauthors for each author in the dataset. There is a step at 450 authors due to a paper with 450 authors. We remove the paper in the preprocessing step.")
-
+![coauthor_distr](coauthor_distribution.png)
+_Distribution of the number of coauthors for each author in the dataset. There is a step at 450 authors due to a
+paper with 450 authors. We remove the paper in the preprocessing step._
 
 We use the _text-embedding-3-large_ model from OpenAI to generate the paper embeddings based on the title
 and abstract of each paper.
@@ -45,13 +46,26 @@ The paper nodes are connected to author nodes via authorship edges.
 
 
 
-![Bipartite_graph](plot.png "The bipartite graph structure of the PaperTrail dataset.")
+![Bipartite_graph](plot.png)
+_The bipartite graph structure of the PaperTrail dataset._
 
-The dataset is available for download as a PyG graph (`HeteroData` object).
+The dataset is available for download as a PyG `HeteroData` object [2].
 
-## Data Splitting
+Initially, 51% of the author nodes have degree 1 (i.e., have authored only one paper).
+Of course, this means that many links that we would like to predict and evaluate our model on are impossible
+to predict, as there is no additional information about these authors in the training set.
+Therefore, we filter out the authors with less than 3 papers, as well as the papers with less than 2 authors
+and more than 50 authors.
+After this filtering step, the degree distributions of the author and paper nodes are displayed in the figure below.
 
+![degree_distribution](degree_distribution.png)
 
+_Degree distribution of the author and paper nodes, after removing the 
+papers with more than 50 authors and less than 2 authors, as well as the authors with less than 3 papers._ 
+
+## Data splitting
+
+We use a random link split using the `RandomLinkSplit` transform from PyG [2] to create training, validation, and test sets.
 
 ## Models
 
@@ -141,4 +155,4 @@ Note that in above code we exclude the links that appear in training through `ex
 ## References
 
 [1] He, Xiangnan, et al. “LightGCN: Simplifying and Powering Graph Convolution Network for Recommendation.” arXiv:2002.02126, arXiv, 7 July 2020. arXiv.org, https://doi.org/10.48550/arXiv.2002.02126.
-
+[2] Fey, Matthias, and Jan E. Lenssen. “Fast Graph Representation Learning with PyTorch Geometric.” ICLR Workshop on Representation Learning on Graphs and Manifolds, 2019.
