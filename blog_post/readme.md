@@ -7,7 +7,7 @@ _TL;DR We introduce **PaperTrail**, a graph-based recommendation system designed
 discovering interesting papers. In this blog post, we will discuss how we obtain the data and construct the graph,
 as well as compare different recommendation algorithms._
 
-
+## Information Overload at Large Conferences
 
 At large conferences such as NeurIPS, ICML, and CVPR, the number of accepted papers has been growing rapidly over the years.
 For example, in 2025, there were over 5000 papers accepted at NeurIPS alone.
@@ -25,19 +25,16 @@ _The growth of the number of accepted NeurIPS papers over the years. Source: htt
 Building a recommendation system that would recommend similar papers to authors based on their previous publications requires
 a dataset of papers and their authors, so that it can learn the paper authorship patterns.
 
-In other words, we can represent this as a link prediction task on a bipartite graph, where one set of nodes represents authors,
+The goal is to build a model that, given an author node, can recommend papers that the author might be interested in,
+based on the papers they have authored in the past. In other words, we can represent this as a link prediction task
+on a bipartite graph, where one set of nodes represents authors,
 the other set represents papers, and the edges represent authorship relations between authors and papers.
-
 
 
 ## Data Collection and Preprocessing
 
-
 We constructed the PaperTrail dataset by scraping the data from websites of various large conferences: NeurIPS, ICLR,
-ICML, ICCV, ECCV, and CVPR.
-
-
-We found that it's not possible to easily disentangle the authors with the same names.
+ICML, ICCV, ECCV, and CVPR. The scraped data contains the titles and abstracts of the papers, as well as the list of authors for each paper.  We found that it's not possible to easily disentangle the authors with the same names.
 Therefore, we may accidentally merge different authors into one node if they share the same name, which may degrade
 performance.
 
@@ -46,17 +43,6 @@ performance.
 _Distribution of the number of coauthors for each author in the dataset. There is a step at 450 authors due to a
 paper with 450 authors. We remove the paper in the preprocessing step._
 
-
-The preprocessed dataset in the end is a bipartite graph consisting of paper and author nodes.
-The paper nodes are connected to author nodes via authorship edges.
-
-We use the _text-embedding-3-large_ model from OpenAI to generate the paper embeddings based on the title
-and abstract of each paper.
-
-![Bipartite_graph](plot.png)
-_The bipartite graph structure of the PaperTrail dataset._
-
-The dataset is available for download as a PyG `HeteroData` object [2].
 
 Initially, 51% of the author nodes have degree 1 (i.e., have authored only one paper).
 Of course, this means that many links that we would like to predict and evaluate our model on are impossible
@@ -70,7 +56,16 @@ After this filtering step, the degree distributions of the author and paper node
 _Degree distribution of the author and paper nodes, after removing the 
 papers with more than 50 authors and less than 2 authors, as well as the authors with less than 3 papers._ 
 
-## Data splitting
+After preprocessing, we use the _text-embedding-3-large_ model from OpenAI to generate the paper embeddings based on the title
+and abstract of each paper. The preprocessed dataset in the end is a bipartite graph consisting of paper and author nodes.
+The paper nodes are connected to author nodes via authorship edges.
+
+The dataset is available for download as a PyG `HeteroData` object [2].
+
+![Bipartite_graph](plot.png)
+_The bipartite graph structure of the PaperTrail dataset. The papers carry LLM-generated initial node features, whereas
+the author nodes are initialized with a vector of constants._
+
 
 We use a random link split using the `RandomLinkSplit` transform from PyG [2] to create training, validation, and test sets.
 
