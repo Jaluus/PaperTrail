@@ -2,10 +2,12 @@
 
 _By Jan-Lucas Uslu and Gregor Krzmanc as part of the Stanford CS224W course project_
 
-
-_TL;DR We introduce **PaperTrail**, a graph-based recommendation system designed to assist conference authors in 
-discovering interesting papers. In this blog post, we will discuss how we obtain the data and construct the graph,
+_TL;DR We introduce **PaperTrail**, a graph-based recommendation system designed to assist conference authors in
+discovering interesting papers.
+In this blog post, we will discuss how we obtain the data and construct the graph,
 as well as compare different recommendation algorithms._
+
+Github repository: PALACEHOLDER FOR GITHUB LINK
 
 ## Information Overload at Large Conferences
 
@@ -18,45 +20,42 @@ To address this challenge, we attempt to build a recommendation system for confe
 
 ![Neurips_N_Papers_vs_year](neurips_papers_vs_year.png "Neurips papers")
 
-_The growth of the number of accepted NeurIPS papers over the years. Source: https://papercopilot.com/statistics/NeurIPS-statistics/_
+_The growth of the number of accepted NeurIPS papers over the years. Source: <https://papercopilot.com/statistics/NeurIPS-statistics/>_
 
 ## Problem Statement
 
 Building a recommendation system that would recommend similar papers to authors based on their previous publications requires
 a dataset of papers and their authors, so that it can learn the paper authorship patterns.
 
-The goal is to build a model that, given an author node, can recommend papers that the author might be interested in,
-based on the papers they have authored in the past. In other words, we can represent this as a link prediction task
-on a bipartite graph, where one set of nodes represents authors,
-the other set represents papers, and the edges represent authorship relations between authors and papers.
-
+The goal is to build a model that, given an author node, can recommend papers that the author might be interested in, based on the papers they have authored in the past.
+In other words, we can represent this as a link prediction task on a bipartite graph, where one set of nodes represents authors, the other set represents papers, and the edges represent authorship relations between authors and papers.
 
 ## Data Collection and Preprocessing
 
-We constructed the PaperTrail dataset by scraping the data from websites of various large conferences: NeurIPS, ICLR,
-ICML, ICCV, ECCV, and CVPR. The scraped data contains the titles and abstracts of the papers, as well as the list of authors for each paper.  We found that it's not possible to easily disentangle the authors with the same names.
-Therefore, we may accidentally merge different authors into one node if they share the same name, which may degrade
-performance.
+We constructed the PaperTrail dataset by scraping data from websites of various large conferences: NeurIPS, ICLR,
+ICML, ICCV, ECCV, and CVPR.
+The scraped data contains the titles and abstracts of the papers, as well as the list of authors for each paper.
+Here the first challenge is to correctly identify and disentangle the authors, as there are many authors with the same name.
+Therefore, some authors may have the wrong set of papers associated with them.
 
-Constructing a graph from the raw data requires some preprocessing steps in order to make it usable for model development.
+When it comes to constructing the graph from raw data, we apply several preprocessing steps to ensure the dataset is suitable for model development.
 
 Initially, 51% of the author nodes have degree 1 (i.e., 51% of the authors have only authored one paper in the dataset).
-Of course, this means that many links that we would like to predict and evaluate our model on are impossible
-to predict, as there is no additional information about these authors in the training set, apart from these links.
+Of course, this means that many links that we would like to predict and evaluate our model on are impossible to predict, as the model only propagates information through existing edges.
 Therefore, we filter out the authors with less than 3 papers, as well as the papers with less than 2 authors
 and more than 50 authors.
 After this filtering step, the degree distributions of the author and paper nodes are displayed in the figure below.
 
 ![degree_distribution](degree_distribution.png)
 
-_Degree distribution of the author and paper nodes, after removing the 
-papers with more than 50 authors and less than 2 authors, as well as the authors with less than 3 papers._ 
+_Degree distribution of the author and paper nodes, after removing the
+papers with more than 50 authors and less than 2 authors, as well as the authors with less than 3 papers._
 
-After preprocessing, we use the _text-embedding-3-large_ model from OpenAI to generate the paper embeddings based on the title
-and abstract of each paper. The preprocessed dataset in the end is a bipartite graph consisting of paper and author nodes.
-The paper nodes are connected to author nodes via authorship edges.
+After preprocessing, we use the _text-embedding-3-large_ model from OpenAI to generate the paper embeddings based on the title and abstract of each paper.
+To make the embedding dimensionality more manageable, we opt to crop the embeddings to the first 256 dimensions.
+This is possible with the embeddings of the _text-embedding-3-large_ model as the model was trained using the Matrioshka [CITE AND UPDATE] approach, where the first dimensions capture the most important information.
 
-The dataset is available for download as a PyG `HeteroData` object [2].
+All dataset are available in our GitHub repository.
 
 ![Bipartite_graph](plot.png)
 _The bipartite graph structure of the PaperTrail dataset. The papers carry LLM-generated initial node features, whereas
@@ -81,7 +80,7 @@ We use a simple dot product decoder to compute the scores between authors and pa
 
 $f(h_i, h_j') = h_i^T h_j'$
 
-### Popularity baseline (can remove)
+<!-- ### Popularity baseline (can remove)
 
 As a simple baseline, we consider a _popularity-based_ recommendation system.
 Here, we assume that the score between an author and a paper is simply the product of their degrees, so basically the
@@ -94,13 +93,14 @@ Likely, similar papers to the ones an author has already written are relevant to
 Therefore, we consider a baseline without using the graph structure, where we simply average the embeddings of the
 papers an author has coauthored, and set this to be the author embedding.
 Of course, the embedding averages are computed using the training message-passing index and not the full graph in order
-to avoid data leakage.
+to avoid data leakage. -->
+
+### Neural Graph Collaborative Filtering (NGCF)
 
 ### LightGCN
 
 LightGCN [1] uses a simplified graph convolutional network architecture specifically designed for recommendation systems.
-It removes unnecessary components such as feature transformation and nonlinear activation functions, using only 
-the neighborhood aggregation step to learn the embeddings.
+It removes unnecessary components such as feature transformation and nonlinear activation functions, using only the neighborhood aggregation step to learn the embeddings.
 
 The embeddings at layer $k$ are computed through multiple layers of neighborhood aggregation:
 
@@ -109,18 +109,16 @@ $$ h_i^{(k)} = \sum_{j \in N(i)} \frac{1}{\sqrt{|N(i)|} \sqrt{|N(j)|}} h_j^{(k-1
 In the end, the final embeddings are computed as a (weighted) average of the embeddings from all layers:
 $$ h_i = \sum_{k=0}^{K} \alpha_k h_i^{(k)} .$$
 
-The weighted average allows the model to combine information both from the initial embeddings and from the higher-order neighborhoods.
+The weighted average allows the model to combine information both from the nearby nodes (lower layers) and from the more distant nodes (higher layers).
 
-We set all the weights to be equal, i.e., $\alpha_k = \frac{1}{K+1}$, similarly to [1].
+For the final embeddings, we use $K=3$ layers of neighborhood aggregation and set all the weights to be equal, i.e., $\alpha_k = \frac{1}{K+1}$, similarly to [1].
 
-One of its drawbacks is that it is inherently transductive due to the learnable embeddings, meaning that new nodes
-cannot be easily incorporated without retraining the model.
+While the model is relatively simple, it has been shown to perform very well on recommendation tasks.
+But there are also some limitations to LightGCN.
+Firstly, it can not incorporate node features beyond the initial embeddings, as it does not have any feature transformation layers.
+Secondly, it is a purely transductive model, this means the nodes the model can make predictions for must be present in the training graph, we can not add new nodes without retraining the model.
 
-
-### NGCF
-
-
-
+Regardless, we find that LightGCN performs very well on our PaperTrail dataset.
 
 ## Metrics
 
@@ -160,14 +158,10 @@ Note that in above code we exclude the links that appear in training through `ex
 
 ## Results
 
-
-
 ## Conclusion
-
 
 ## References
 
-[1] He, Xiangnan, et al. “LightGCN: Simplifying and Powering Graph Convolution Network for Recommendation.” arXiv:2002.02126, arXiv, 7 July 2020. arXiv.org, https://doi.org/10.48550/arXiv.2002.02126.
+[1] He, Xiangnan, et al. “LightGCN: Simplifying and Powering Graph Convolution Network for Recommendation.” arXiv:2002.02126, arXiv, 7 July 2020. arXiv.org, <https://doi.org/10.48550/arXiv.2002.02126>.
 
 [2] Fey, Matthias, and Jan E. Lenssen. “Fast Graph Representation Learning with PyTorch Geometric.” ICLR Workshop on Representation Learning on Graphs and Manifolds, 2019.
-
