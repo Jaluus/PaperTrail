@@ -62,6 +62,15 @@ The dataset is available for download as a PyG `HeteroData` object [2].
 _The bipartite graph structure of the PaperTrail dataset. The papers carry LLM-generated initial node features, whereas
 the author nodes are initialized with a vector of constants._
 
+## Dataset Split Setup for Link Prediction
+
+Training a link prediction model requires removing some edges from the graph, and attempting to predict them based
+on the remaining edges (message passing edges).
+The removed edges are partitioned into a training (training supervision) set, as well as validation and test sets
+for model evaluation:
+
+![edge_types](edge_types.png)
+
 
 We use a random link split using the `RandomLinkSplit` transform from PyG [2] to create training, validation, and test sets.
 
