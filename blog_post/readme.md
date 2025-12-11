@@ -97,26 +97,58 @@ to avoid data leakage. -->
 
 ### Neural Graph Collaborative Filtering (NGCF)
 
+Neural Graph Collaborative Filtering (NGCF) [3] is a graph neural network architecture for collaborative filtering that operates directly on the user-item interaction graph.
+In our setting, we treat authors as users and papers as items, with an edge indicating authorship.
+
+Starting from initial author and paper embeddings $h^{(0)}$, NGCF repeatedly propagates information through the bipartite graph to capture higher-order connectivities (i.e., multi-hop relationships between authors and papers).
+At each layer, it applies learnable feature transformations and nonlinearities.
+It also augments message passing with a _bi-interaction_ term that explicitly models feature interactions between a node and its neighbor.
+
+The layer-wise embedding update for a node $i$ can be written as:
+
+$$
+h_i^{(k)} = \sigma\left(
+\sum_{j \in N(i)} \frac{1}{\sqrt{|N(i)|} \sqrt{|N(j)|}}
+\left(
+W_1^{(k)} h_j^{(k-1)} + W_2^{(k)} \left(h_j^{(k-1)} \odot h_i^{(k-1)}\right)
+\right)
+\right),
+$$
+
+where $W_1^{(k)}$ and $W_2^{(k)}$ are learnable weight matrices, $\odot$ denotes element-wise product, and $\sigma$ is typically a LeakyReLU activation.
+
+Finally, NGCF concatenates the representations from all layers to form the final embedding used by our dot product decoder:
+
+$$ h_i = h_i^{(0)} \,\|\, h_i^{(1)} \,\|\, \dots \,\|\, h_i^{(K)}. $$
+
+Overall, NGCF is a more expressive but heavier model than LightGCN.
+It introduces additional parameters and nonlinearities that can improve performance, but also increase training cost and the risk of overfitting.
+Next, we consider LightGCN, which simplifies NGCF by removing feature transformation and nonlinearities while retaining neighborhood aggregation.
+
 ### LightGCN
 
-LightGCN [1] uses a simplified graph convolutional network architecture specifically designed for recommendation systems.
-It removes unnecessary components such as feature transformation and nonlinear activation functions, using only the neighborhood aggregation step to learn the embeddings.
+LightGCN [1] is a streamlined graph convolutional model tailored to recommendation on bipartite interaction graphs.
+It can be viewed as a simplification of NGCF that removes feature transformation and nonlinear activation functions.
+Each layer therefore performs only normalized neighborhood aggregation.
 
-The embeddings at layer $k$ are computed through multiple layers of neighborhood aggregation:
+At layer $k$, the embedding of a node $i$ is updated by aggregating its neighbors:
 
 $$ h_i^{(k)} = \sum_{j \in N(i)} \frac{1}{\sqrt{|N(i)|} \sqrt{|N(j)|}} h_j^{(k-1)} $$
 
-In the end, the final embeddings are computed as a (weighted) average of the embeddings from all layers:
-$$ h_i = \sum_{k=0}^{K} \alpha_k h_i^{(k)} .$$
+Here, $N(i)$ denotes the neighbors of node $i$ in the author-paper graph.
+The symmetric normalization term prevents high-degree nodes from dominating the propagation.
 
-The weighted average allows the model to combine information both from the nearby nodes (lower layers) and from the more distant nodes (higher layers).
+To obtain the final representation, LightGCN combines the embeddings from all layers:
 
-For the final embeddings, we use $K=3$ layers of neighborhood aggregation and set all the weights to be equal, i.e., $\alpha_k = \frac{1}{K+1}$, similarly to [1].
+$$ h_i = \sum_{k=0}^{K} \alpha_k h_i^{(k)}. $$
 
-While the model is relatively simple, it has been shown to perform very well on recommendation tasks.
-But there are also some limitations to LightGCN.
-Firstly, it can not incorporate node features beyond the initial embeddings, as it does not have any feature transformation layers.
-Secondly, it is a purely transductive model, this means the nodes the model can make predictions for must be present in the training graph, we can not add new nodes without retraining the model.
+For the final embeddings, we use $K=3$ layers of neighborhood aggregation and set all weights to be equal, i.e., $\alpha_k = \frac{1}{K+1}$, similarly to [1].
+This layer aggregation mixes information from different hop distances and helps mitigate over-smoothing.
+
+LightGCN is parameter-efficient and has been shown to perform very well on recommendation tasks.
+However, it cannot incorporate node features beyond the learned embeddings, since it has no feature transformation layers.
+It is also a transductive model, so authors and papers must be present in the training graph to receive meaningful embeddings.
+Adding new authors or new papers requires learning new embeddings, which typically means retraining the model.
 
 Regardless, we find that LightGCN performs very well on our PaperTrail dataset.
 
@@ -165,3 +197,5 @@ Note that in above code we exclude the links that appear in training through `ex
 [1] He, Xiangnan, et al. “LightGCN: Simplifying and Powering Graph Convolution Network for Recommendation.” arXiv:2002.02126, arXiv, 7 July 2020. arXiv.org, <https://doi.org/10.48550/arXiv.2002.02126>.
 
 [2] Fey, Matthias, and Jan E. Lenssen. “Fast Graph Representation Learning with PyTorch Geometric.” ICLR Workshop on Representation Learning on Graphs and Manifolds, 2019.
+
+[3] Wang, Xiang, et al. “Neural Graph Collaborative Filtering.” arXiv:1905.08108, arXiv, 3 July 2020. arXiv.org, <https://doi.org/10.48550/arXiv.1905.08108>.
