@@ -3,8 +3,9 @@
 _By Jan-Lucas Uslu and Gregor Krzmanc as part of the Stanford CS224W course project_
 
 
-_TL;DR Here, we introduce **PaperTrail**, a graph-based recommendation system designed to assist conference authors in discovering pertinent papers.
-In this blog post, we will discuss how we obtained the data and construct the graph, as well as compare different recommendation algorithms._
+_TL;DR We introduce **PaperTrail**, a graph-based recommendation system designed to assist conference authors in 
+discovering interesting papers. In this blog post, we will discuss how we obtain the data and construct the graph,
+as well as compare different recommendation algorithms._
 
 
 
@@ -14,13 +15,23 @@ With such a vast number of publications, it becomes increasingly challenging for
 that align with their research interests and contribute meaningfully to their work.
 
 To address this challenge, we attempt to build a recommendation system for conference authors.
-Here, we describe the steps taken from the dataset collection to training and the obtained results.
 
 ![Neurips_N_Papers_vs_year](neurips_papers_vs_year.png "Neurips papers")
 
 _The growth of the number of accepted NeurIPS papers over the years. Source: https://papercopilot.com/statistics/NeurIPS-statistics/_
 
-## Dataset Construction and Preprocessing
+## Problem Statement
+
+Building a recommendation system that would recommend similar papers to authors based on their previous publications requires
+a dataset of papers and their authors, so that it can learn the paper authorship patterns.
+
+In other words, we can represent this as a link prediction task on a bipartite graph, where one set of nodes represents authors,
+the other set represents papers, and the edges represent authorship relations between authors and papers.
+
+
+
+## Data Collection and Preprocessing
+
 
 We constructed the PaperTrail dataset by scraping the data from websites of various large conferences: NeurIPS, ICLR,
 ICML, ICCV, ECCV, and CVPR.
@@ -30,21 +41,17 @@ We found that it's not possible to easily disentangle the authors with the same 
 Therefore, we may accidentally merge different authors into one node if they share the same name, which may degrade
 performance.
 
-We preprocess the data and filter it by removing the papers with only one author, as well as the paper with 450
-different authors (see figure below).
 
 ![coauthor_distr](coauthor_distribution.png)
 _Distribution of the number of coauthors for each author in the dataset. There is a step at 450 authors due to a
 paper with 450 authors. We remove the paper in the preprocessing step._
 
-We use the _text-embedding-3-large_ model from OpenAI to generate the paper embeddings based on the title
-and abstract of each paper.
-
 
 The preprocessed dataset in the end is a bipartite graph consisting of paper and author nodes.
 The paper nodes are connected to author nodes via authorship edges.
 
-
+We use the _text-embedding-3-large_ model from OpenAI to generate the paper embeddings based on the title
+and abstract of each paper.
 
 ![Bipartite_graph](plot.png)
 _The bipartite graph structure of the PaperTrail dataset._
@@ -116,6 +123,11 @@ We aim to solve two
 
 ## Metrics
 
+Evaluating a recommendation system can be tricky - even though our model can be viewed as a classifier assigning
+a score to each possible author-paper pair, the vast majority of these pairs are negative samples (i.e., there should be no
+link between the author and the paper). Therefore, standard classification metrics such as accuracy or area under the ROC
+curve are not very informative in this setting.
+
 We use the standard metrics for evaluating recommendation systems: Precision@K and Recall@K.
 Precision@K measures the proportion of recommended papers in the top K that are relevant to the author,
 while Recall@K measures the proportion of relevant papers that are included in the top K recommendations.
@@ -155,4 +167,6 @@ Note that in above code we exclude the links that appear in training through `ex
 ## References
 
 [1] He, Xiangnan, et al. “LightGCN: Simplifying and Powering Graph Convolution Network for Recommendation.” arXiv:2002.02126, arXiv, 7 July 2020. arXiv.org, https://doi.org/10.48550/arXiv.2002.02126.
+
 [2] Fey, Matthias, and Jan E. Lenssen. “Fast Graph Representation Learning with PyTorch Geometric.” ICLR Workshop on Representation Learning on Graphs and Manifolds, 2019.
+
