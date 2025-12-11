@@ -10,9 +10,15 @@ import time
 import torch
 from torch import optim
 from modeling.utils import add_coauthor_edges
+import argparse
+
+parser = argparse.ArgumentParser()
+parser.add_argument("--include-coauthor-edges", action="store_true",
+                    help="Whether to include coauthor edges in the training data")
+args = parser.parse_args()
+
 torch.manual_seed(42)
 torch.cuda.manual_seed_all(42)
-
 
 # Lets start by loading the data
 data = torch.load("data/hetero_data_filtered_3_2.pt", weights_only=False)
@@ -31,9 +37,13 @@ train_data, val_data, test_data = T.RandomLinkSplit(
     rev_edge_types=[("paper", "rev_writes", "author")],
 )(data)
 
-#train_data = add_coauthor_edges(train_data)
-#val_data = add_coauthor_edges(val_data)
-#test_data = add_coauthor_edges(test_data)
+MODEL_NAME = "GNN"
+
+if args.include_coauthor_edges:
+    MODEL_NAME = "GNN_coauthor"
+    train_data = add_coauthor_edges(train_data)
+    val_data = add_coauthor_edges(val_data)
+    test_data = add_coauthor_edges(test_data)
 
 # define contants
 ITERATIONS = 100000
@@ -190,14 +200,14 @@ for iter in range(ITERATIONS):
         metrics["test_precision20"].append(test_precision)
         pickle.dump(
             metrics,
-            open("metrics_GNN.pkl", "wb"),
+            open("metrics_{}.pkl".format(MODEL_NAME), "wb"),
 
         )
         pickle.dump(
             train_losses,
-            open("loss_GNN.pkl", "wb"),
+            open("loss_{}.pkl".format(MODEL_NAME), "wb"),
         )
-        torch.save(model.state_dict(), "model_GNN_{}.pth".format(iter + 1))
+        torch.save(model.state_dict(), "model_{}_{}.pth".format(MODEL_NAME, iter + 1))
         model.train()
 
 
