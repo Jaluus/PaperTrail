@@ -13,13 +13,13 @@ def get_coauthor_edges(edge_index_bipartite):
     for authors in paper_to_authors.values():
         authors_list = list(authors)
         pairs = []
-        if len(authors_list) <= 3: # less than 3 authors - include all coauthor edges
+        if len(authors_list) <= 5: # less than 5 authors - include all coauthor edges
             for i in range(len(authors_list)):
                 for j in range(len(authors_list)):
                     if i != j:
                         pairs.append((i, j))
-        else: #otherwise, sample 5 random pairs
-            for _ in range(5):
+        else: #otherwise, sample 25 random pairs
+            for _ in range(25):
                 i, j = random.sample(range(len(authors_list)), 2)
                 pairs.append((i, j))
         for (i, j) in pairs:
