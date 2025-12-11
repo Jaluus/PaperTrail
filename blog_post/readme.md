@@ -47,7 +47,7 @@ The paper nodes are connected to author nodes via authorship edges.
 
 ![Bipartite_graph](plot.png "The bipartite graph structure of the PaperTrail dataset.")
 
-The dataset is available for download as a PyG graph from httpXYZ.
+The dataset is available for download as a PyG graph (`HeteroData` object).
 
 ## Data Splitting
 
@@ -59,14 +59,14 @@ We use a simple dot product decoder to compute the scores between authors and pa
 
 $f(h_i, h_j') = h_i^T h_j'$
 
-### Popularity baseline
+### Popularity baseline (can remove)
 
 As a simple baseline, we consider a _popularity-based_ recommendation system.
 Here, we assume that the score between an author and a paper is simply the product of their degrees, so basically the
 number of the papers the author has co-authored, multiplied by the number of authors of the paper. This extremely simple
 baseline serves as an additional sanity check whether our GNN-based models can outperform such a naive approach.
 
-### Text dot product baseline
+### Text dot product baseline (can remove)
 
 Likely, similar papers to the ones an author has already written are relevant to the author.
 Therefore, we consider a baseline without using the graph structure, where we simply average the embeddings of the
@@ -74,13 +74,38 @@ papers an author has coauthored, and set this to be the author embedding.
 Of course, the embedding averages are computed using the training message-passing index and not the full graph in order
 to avoid data leakage.
 
-### GNN-based Models
+### LightGCN
+
+LightGCN [1] uses a simplified graph convolutional network architecture specifically designed for recommendation systems.
+It removes unnecessary components such as feature transformation and nonlinear activation functions, using only 
+the neighborhood aggregation step to learn the embeddings.
+
+The embeddings at layer $k$ are computed through multiple layers of neighborhood aggregation:
+
+$$ h_i^{(k)} = \sum_{j \in N(i)} \frac{1}{\sqrt{|N(i)|} \sqrt{|N(j)|}} h_j^{(k-1)} $$
+
+In the end, the final embeddings are computed as a (weighted) average of the embeddings from all layers:
+$$ h_i = \sum_{k=0}^{K} \alpha_k h_i^{(k)} .$$
+
+The weighted average allows the model to combine information both from the initial embeddings and from the higher-order neighborhoods.
+
+We set all the weights to be equal, i.e., $\alpha_k = \frac{1}{K+1}$, similarly to [1].
+
+One of its drawbacks is that it is inherently transductive due to the learnable embeddings, meaning that new nodes
+cannot be easily incorporated without retraining the model.
+
+
+### NGCF
+
+We aim to solve two 
+
 
 ## Metrics
 
 We use the standard metrics for evaluating recommendation systems: Precision@K and Recall@K.
 Precision@K measures the proportion of recommended papers in the top K that are relevant to the author,
 while Recall@K measures the proportion of relevant papers that are included in the top K recommendations.
+Both metrics are averaged across authors.
 
 In order to retrieve top K recommendations for each author efficiently, we
 divide the author list into batches and compute dot products between the current author and all the paper embeddings
@@ -104,7 +129,7 @@ efficiently using `torch.matmul`:
         )
 ```
 
-Note that in above code we exclude the links that appear in training through `exclude_user_id_to_ground_truth_indices`. See the full code for more details
+Note that in above code we exclude the links that appear in training through `exclude_user_id_to_ground_truth_indices`. See the full code for more details.
 
 ## Results
 
@@ -114,4 +139,6 @@ Note that in above code we exclude the links that appear in training through `ex
 
 
 ## References
+
+[1] He, Xiangnan, et al. “LightGCN: Simplifying and Powering Graph Convolution Network for Recommendation.” arXiv:2002.02126, arXiv, 7 July 2020. arXiv.org, https://doi.org/10.48550/arXiv.2002.02126.
 
