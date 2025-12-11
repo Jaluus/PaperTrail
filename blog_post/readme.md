@@ -70,7 +70,8 @@ The removed edges are partitioned into a training (training supervision) set, as
 for model evaluation:
 
 ![edge_types](edge_types.png)
-
+_Link splitting for a link prediction problem on the author-paper bipartite graph. The model only sees the message passing edges and the loss
+is optimized using the train supervision edges._
 
 We use a random link split using the `RandomLinkSplit` transform from PyG [2] to create training, validation, and test sets.
 
