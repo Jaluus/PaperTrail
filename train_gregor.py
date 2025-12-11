@@ -13,8 +13,11 @@ from modeling.utils import add_coauthor_edges
 import argparse
 
 parser = argparse.ArgumentParser()
+parser.add_argument("--LightGCN", action="store_true",
+                    help="Whether to use LightGCN")
 parser.add_argument("--include-coauthor-edges", action="store_true",
                     help="Whether to include coauthor edges in the training data")
+
 args = parser.parse_args()
 
 torch.manual_seed(42)
@@ -44,8 +47,9 @@ if args.include_coauthor_edges:
     train_data = add_coauthor_edges(train_data)
     val_data = add_coauthor_edges(val_data)
     test_data = add_coauthor_edges(test_data)
+elif args.LightGCN:
+    MODEL_NAME = "LightGCN"
 
-# define contants
 ITERATIONS = 100000
 LR = 1e-4
 
@@ -71,11 +75,19 @@ val_data = val_data.to(device)
 test_data = test_data.to(device)
 
 # setup
-model = Model(
-    data=data,
-    embedding_dim=256,
-    num_layers=5,
-)
+if args.LightGCN:
+    model = LightGCN(
+        num_authors=train_data["author"].num_nodes,
+        num_papers=train_data["paper"].num_nodes,
+        embedding_dim=256,
+        K=6,
+    )
+else:
+    model = Model(
+        data=train_data,
+        embedding_dim=256,
+        num_layers=5,
+    )
 
 
 model = model.to(device)
@@ -201,7 +213,6 @@ for iter in range(ITERATIONS):
         pickle.dump(
             metrics,
             open("metrics_{}.pkl".format(MODEL_NAME), "wb"),
-
         )
         pickle.dump(
             train_losses,
