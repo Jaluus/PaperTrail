@@ -4,8 +4,7 @@ _By Jan-Lucas Uslu and Gregor Krzmanc as part of the Stanford CS224W course proj
 
 _TL;DR We introduce **PaperTrail**, a graph-based recommendation system designed to assist conference authors in
 discovering interesting papers.
-In this blog post, we will discuss how we obtain the data and construct the graph,
-as well as compare different recommendation algorithms._
+In this blog post, we will discuss how we obtain the data, construct the graph and train a model on it._
 
 Github repository: PALACEHOLDER FOR GITHUB LINK
 
@@ -24,21 +23,24 @@ _The growth of the number of accepted NeurIPS papers over the years. Source: <ht
 
 ## Problem Statement
 
-Building a recommendation system that would recommend similar papers to authors based on their previous publications requires
-a dataset of papers and their authors, so that it can learn the paper authorship patterns.
+Building a recommendation system that would recommend similar papers to authors based on their previous publications requires a dataset of papers and their authors, so that it can learn the paper authorship patterns.
 
 The goal is to build a model that, given an author node, can recommend papers that the author might be interested in, based on the papers they have authored in the past.
 In other words, we can represent this as a link prediction task on a bipartite graph, where one set of nodes represents authors, the other set represents papers, and the edges represent authorship relations between authors and papers.
 
+![Bipartite_graph](plot.png)
+_The graph structure of a conference. Here, authors are connected to the contributions they have authored, giving rise to a bipartite graph structure. In this example each node carries an initial embedding vector. While the authors are initialized with a vector of ones, the contributions are initialized with text-embeddings obtained from their abstracts.._
+
 ## Data Collection and Preprocessing
 
-We constructed the PaperTrail dataset by scraping data from websites of various large conferences: NeurIPS, ICLR,
-ICML, ICCV, ECCV, and CVPR.
-The scraped data contains the titles and abstracts of the papers, as well as the list of authors for each paper.
-Here the first challenge is to correctly identify and disentangle the authors, as there are many authors with the same name.
-Therefore, some authors may have the wrong set of papers associated with them.
+To construct the PaperTrail dataset, we scraped data from the websites of several major conferences, including NeurIPS, ICLR, ICML, ICCV, ECCV, and CVPR.
 
-When it comes to constructing the graph from raw data, we apply several preprocessing steps to ensure the dataset is suitable for model development.
+The raw scraped data contains the titles, URLs, year, conference and abstracts of the contributions, as well as the list of authors for each paper.
+Here we are faced with a problem of name disambiguation, as many authors may share the same name.
+In the current dataset it is not possible to fully resolve this issue, so some authors may have incorrect sets of papers associated with them.
+In future work one may be able to look up each paper on OpenReview or Semantic Scholar to obtain unique author IDs, which would help to resolve this issue.
+
+To bring the data into a useful format for model training, we first apply several filtering and preprocessing steps.
 
 Initially, ~48% of the author nodes have degree 1 (i.e., 48% of the authors have only authored one paper in the dataset).
 Of course, this means that many links that we would like to predict and evaluate our model on are impossible to predict, as the model only propagates information through existing edges.
@@ -60,7 +62,7 @@ All dataset are available in our GitHub repository.
 
 ## Dataset Split Setup for Link Prediction
 
-Training a link prediction model requires removing some edges from the graph and attempting to predict them based
+Training a link prediction model requires removing some edges from the graph, and attempting to predict them based
 on the remaining edges (message passing edges).
 The removed edges are partitioned into a training (training supervision) set, as well as validation and test sets
 for model evaluation:
@@ -71,26 +73,24 @@ is optimized using the train supervision edges._
 
 We use a random link split using the `RandomLinkSplit` transform from PyG [2] to create training, validation, and test sets.
 
+```python
+train_data, val_data, test_data = T.RandomLinkSplit(
+    num_val=0.1, # 10% of the edges are used for validation
+    num_test=0.1, # 10% of the edges are used for testing
+    neg_sampling_ratio=0.0, # no negative sampling, We are adding negative samples on the fly
+    disjoint_train_ratio=0.3, # 30% of the training edges are used for training supervision
+    add_negative_train_samples=False, # Again, we are adding negative samples on the fly
+    is_undirected=True, # the graph is undirected
+    edge_types=[("author", "writes", "paper")], # the type of edges we are interested in predicting
+    rev_edge_types=[("paper", "rev_writes", "author")], # We dont want to accidentally leak information from the reverse edges
+)(data)
+```
+
 ## Models
 
 We use a simple dot product decoder to compute the scores between authors and papers based on their embeddings ($h_i$ and $h_j'$):
 
 $f(h_i, h_j') = h_i^T h_j'$
-
-<!-- ### Popularity baseline (can remove)
-
-As a simple baseline, we consider a _popularity-based_ recommendation system.
-Here, we assume that the score between an author and a paper is simply the product of their degrees, so basically the
-number of the papers the author has co-authored, multiplied by the number of authors of the paper. This extremely simple
-baseline serves as an additional sanity check whether our GNN-based models can outperform such a naive approach.
-
-### Text dot product baseline (can remove)
-
-Likely, similar papers to the ones an author has already written are relevant to the author.
-Therefore, we consider a baseline without using the graph structure, where we simply average the embeddings of the
-papers an author has coauthored, and set this to be the author embedding.
-Of course, the embedding averages are computed using the training message-passing index and not the full graph in order
-to avoid data leakage. -->
 
 ### Neural Graph Collaborative Filtering (NGCF)
 
@@ -149,6 +149,61 @@ Adding new authors or new papers requires learning new embeddings, which typical
 
 Regardless, we find that LightGCN performs very well on our PaperTrail dataset.
 
+### GraphSage
+
+We also experiment with GraphSage, which is a simple and scalable graph convolutional network.
+Using GraphSage, we can incorporate node features (such as paper embeddings) directly into the model.
+GraphSage is an inductive model, which means it can generalize to new nodes not seen during training.
+This makes it a good choice for our task, as we may want to recommend papers to new authors or new papers without retraining the model.
+The layer-wise embedding update for a node $i$ in GraphSage can be written as:
+$$
+h_i^{(k)} = \sigma\left(
+\sum_{j \in N(i)} \frac{1}{|N(i)|} \mathbf{W}^{(k)}_1 h_j^{(k-1)} + \mathbf{W}^{(k)}_2 h_i^{(k-1)}
+ \right),
+$$
+
+Where $\mathbf{W}^{(k)}_1$ and $\mathbf{W}^{(k)}_2$ are learnable weight matrices, and $\sigma$ is some nonlinearity function.
+We can see that the model has self-loop terms that allow the model to use information from the node itself, which is useful for incorporating node features.
+
+## Loss
+
+For the link prediction task, one typically uses the binary cross-entropy loss function to train the model.
+One problem with this approach is that this pushes the scores for all negative edges below the scores of all positive edges.
+This is not always necessary, as we only want the positive edges to be better than the negative edges per user, not necessarily globally.
+To address this issue, we use the Bayesian Personalized Ranking (BPR) loss function, which only pushes the scores for negative edges below the scores of the positive edges for each user.
+The BPR loss function is defined as:
+$$
+\mathcal{L} = \frac{1}{|E(u^*)|\;|E_{\text{neg}}(u^*)|}
+\sum_{(u^*, v_{\text{pos}})\in E(u^*)}
+\sum_{(u^*, v_{\text{neg}})\in E_{\text{neg}}(u^*)}
+-\log\!\left(
+\sigma\big(f_\theta(u^*, v_{\text{pos}}) - f_\theta(u^*, v_{\text{neg}})\big)
+\right)
+$$
+
+In code this is implemented very simply as:
+
+```python
+def BPR_loss(
+    pos_scores: torch.Tensor,
+    neg_scores: torch.Tensor,
+):
+    """Computes the Bayesian Personalized Ranking (BPR) loss.
+
+    Args:
+        pos_scores (Tensor): Predicted scores for positive samples.
+        neg_scores (Tensor): Predicted scores for negative samples.
+
+    Returns:
+        Tensor: Computed BPR loss.
+    """
+    loss = -torch.mean(F.logsigmoid(pos_scores - neg_scores))
+    return loss
+```
+
+For this to work the positive and negative scores need to be "paired" correctly.
+This means that for each author, we need to pair the positive edges with the negative edges.
+
 ## Metrics
 
 Evaluating a recommendation system can be tricky - even though our model can be viewed as a classifier assigning
@@ -160,30 +215,6 @@ We use the standard metrics for evaluating recommendation systems: Precision@K a
 Precision@K measures the proportion of recommended papers in the top K that are relevant to the author,
 while Recall@K measures the proportion of relevant papers that are included in the top K recommendations.
 Both metrics are averaged across authors.
-
-In order to retrieve top K recommendations for each author efficiently, we
-divide the author list into batches and compute dot products between the current author and all the paper embeddings
-efficiently using `torch.matmul`:
-
-```python
-    for start in range(0, user_ids.shape[0], batch_size):
-        batched_user_ids = user_ids[start : start + batch_size]
-        batched_user_embeddings = user_embedding[batched_user_ids]
-        batched_scores = torch.matmul(batched_user_embeddings, item_embedding.T)
-        for batch_index, user_id in enumerate(batched_user_ids.tolist()):
-            seen_items = set()
-            for exclude_dict in exclude_user_id_to_ground_truth_indices:
-                seen_items.update(exclude_dict.get(user_id, []))
-            if seen_items:
-                batched_scores[batch_index, list(seen_items)] = -1e9
-        _, top_K_indices[start : start + batch_size] = torch.topk(
-            batched_scores,
-            k=k,
-            dim=1,
-        )
-```
-
-Note that in above code we exclude the links that appear in training through `exclude_user_id_to_ground_truth_indices`. See the full code for more details.
 
 ## Results
 
