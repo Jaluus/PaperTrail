@@ -40,30 +40,27 @@ Therefore, some authors may have the wrong set of papers associated with them.
 
 When it comes to constructing the graph from raw data, we apply several preprocessing steps to ensure the dataset is suitable for model development.
 
-Initially, 51% of the author nodes have degree 1 (i.e., 51% of the authors have only authored one paper in the dataset).
+Initially, ~48% of the author nodes have degree 1 (i.e., 48% of the authors have only authored one paper in the dataset).
 Of course, this means that many links that we would like to predict and evaluate our model on are impossible to predict, as the model only propagates information through existing edges.
+If we would use the edges as validation edges, the model could not update the author node embedding based on any message passing, as there are no remaining edges connected to the author node.
 Therefore, we filter out the authors with less than 3 papers, as well as the papers with less than 2 authors
-and more than 50 authors.
-After this filtering step, the degree distributions of the author and paper nodes are displayed in the figure below.
+and more than 20 authors to stabilize the training.
 
-![degree_distribution](degree_distribution.png)
+![degree_distribution](papers_per_author_filtered.png)
 
 _Degree distribution of the author and paper nodes, after removing the
-papers with more than 50 authors and less than 2 authors, as well as the authors with less than 3 papers._
+papers with more than 20 authors and less than 2 authors, as well as the authors with less than 3 papers.
+As we remove both papers and authors, we still get some authors with less than 3 papers, but the fraction is much smaller now._
 
 After preprocessing, we use the _text-embedding-3-large_ model from OpenAI to generate the paper embeddings based on the title and abstract of each paper.
 To make the embedding dimensionality more manageable, we opt to crop the embeddings to the first 256 dimensions.
-This is possible with the embeddings of the _text-embedding-3-large_ model as the model was trained using the Matrioshka [CITE AND UPDATE] approach, where the first dimensions capture the most important information.
+This is possible with the embeddings of the _text-embedding-3-large_ model as the model was trained using the Matrioshka approach [4], where the first dimensions capture the most important information.
 
 All dataset are available in our GitHub repository.
 
-![Bipartite_graph](plot.png)
-_The bipartite graph structure of the PaperTrail dataset. The papers carry LLM-generated initial node features, whereas
-the author nodes are initialized with a vector of constants._
-
 ## Dataset Split Setup for Link Prediction
 
-Training a link prediction model requires removing some edges from the graph, and attempting to predict them based
+Training a link prediction model requires removing some edges from the graph and attempting to predict them based
 on the remaining edges (message passing edges).
 The removed edges are partitioned into a training (training supervision) set, as well as validation and test sets
 for model evaluation:
@@ -199,3 +196,5 @@ Note that in above code we exclude the links that appear in training through `ex
 [2] Fey, Matthias, and Jan E. Lenssen. “Fast Graph Representation Learning with PyTorch Geometric.” ICLR Workshop on Representation Learning on Graphs and Manifolds, 2019.
 
 [3] Wang, Xiang, et al. “Neural Graph Collaborative Filtering.” arXiv:1905.08108, arXiv, 3 July 2020. arXiv.org, <https://doi.org/10.48550/arXiv.1905.08108>.
+
+[4] Matryoshka Representation Learning <https://arxiv.org/abs/2205.13147>
