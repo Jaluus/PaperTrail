@@ -38,15 +38,11 @@ ICML, ICCV, ECCV, and CVPR. The scraped data contains the titles and abstracts o
 Therefore, we may accidentally merge different authors into one node if they share the same name, which may degrade
 performance.
 
+Constructing a graph from the raw data requires some preprocessing steps in order to make it usable for model development.
 
-![coauthor_distr](coauthor_distribution.png)
-_Distribution of the number of coauthors for each author in the dataset. There is a step at 450 authors due to a
-paper with 450 authors. We remove the paper in the preprocessing step._
-
-
-Initially, 51% of the author nodes have degree 1 (i.e., have authored only one paper).
+Initially, 51% of the author nodes have degree 1 (i.e., 51% of the authors have only authored one paper in the dataset).
 Of course, this means that many links that we would like to predict and evaluate our model on are impossible
-to predict, as there is no additional information about these authors in the training set.
+to predict, as there is no additional information about these authors in the training set, apart from these links.
 Therefore, we filter out the authors with less than 3 papers, as well as the papers with less than 2 authors
 and more than 50 authors.
 After this filtering step, the degree distributions of the author and paper nodes are displayed in the figure below.
@@ -113,7 +109,7 @@ cannot be easily incorporated without retraining the model.
 
 ### NGCF
 
-We aim to solve two 
+
 
 
 ## Metrics
