@@ -31,6 +31,10 @@ train_data, val_data, test_data = T.RandomLinkSplit(
     rev_edge_types=[("paper", "rev_writes", "author")],
 )(data)
 
+#train_data = add_coauthor_edges(train_data)
+#val_data = add_coauthor_edges(val_data)
+#test_data = add_coauthor_edges(test_data)
+
 # define contants
 ITERATIONS = 100000
 LR = 1e-4

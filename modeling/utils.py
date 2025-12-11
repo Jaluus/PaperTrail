@@ -26,3 +26,9 @@ def get_coauthor_edges(edge_index_bipartite):
             coauthorship_edge_index[0].append(authors_list[i])
             coauthorship_edge_index[1].append(authors_list[j])
     return torch.tensor(coauthorship_edge_index)
+
+def add_coauthor_edges(data):
+    edge_index_bipartite = data['author', 'writes', 'paper'].edge_index
+    coauthor_edge_index = get_coauthor_edges(edge_index_bipartite)
+    data['author', 'coauthors', 'author'].edge_index = coauthor_edge_index
+    return data
