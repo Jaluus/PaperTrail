@@ -129,14 +129,14 @@ def calculate_metrics(
     # This list is now indexed again by user position in user_ids tensor
     # It stores for each user the list of ground truth item indices
     # This effectively gives us access to how many items each user likes and what they are
-    ground_truth_indicies = [
+    ground_truth_indices = [
         user_id_to_ground_truth_ids[user_id.item()] for user_id in user_ids
     ]
 
     # Now we can compute recall and precision
     recall, precision = compute_recall_precision_at_k(
         top_K_hits,
-        ground_truth_indicies,
+        ground_truth_indices,
         k,
     )
 

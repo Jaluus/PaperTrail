@@ -5,6 +5,7 @@ from torch_sparse import SparseTensor, matmul
 
 from torch_geometric.nn.conv.gcn_conv import gcn_norm
 from torch_geometric.nn.conv import MessagePassing
+from torch_geometric.data import HeteroData
 
 
 class LightGCN(MessagePassing):
@@ -46,36 +47,8 @@ class LightGCN(MessagePassing):
 
     def forward(
         self,
-        message_passing_edge_index: torch.Tensor,
-        supervision_edge_index: torch.Tensor,
-    ) -> tuple[Tensor, Tensor]:
-        """Forward propagation of LightGCN Model.
-
-        Args:
-            edge_index (SparseTensor): adjacency matrix
-
-        Returns:
-            tuple (Tensor): e_u_k, e_u_0, e_i_k, e_i_0
-        """
-        # compute \tilde{A}: symmetrically normalized adjacency matrix
-
-        authors_emb_final, papers_emb_final = self.get_embeddings(
-            message_passing_edge_index
-        )
-
-        author_ids = supervision_edge_index[0]
-        paper_ids = supervision_edge_index[1]
-        authors_emb_final = authors_emb_final[author_ids]
-        papers_emb_final = papers_emb_final[paper_ids]
-
-        scores = (authors_emb_final * papers_emb_final).sum(dim=1)
-
-        return scores
-
-    def get_embeddings(
-        self,
-        edge_index: torch.Tensor,
-    ) -> Tensor:
+        data: HeteroData,
+    ) -> dict[str, Tensor]:
         """Gets the final node embeddings after K message passing layers.
 
         Args:
@@ -84,6 +57,9 @@ class LightGCN(MessagePassing):
         Returns:
             Tensor: Final node embeddings of shape [num_nodes, embedding_dim].
         """
+
+        edge_index = data["author", "writes", "paper"].edge_index
+
         adj_matrix = SparseTensor.from_edge_index(
             edge_index,
             sparse_sizes=(
@@ -114,7 +90,10 @@ class LightGCN(MessagePassing):
             [self.num_authors, self.num_papers],
         )  # splits into e_u^K and e_i^K
 
-        return authors_emb_final, papers_emb_final
+        return {
+            "author": authors_emb_final,
+            "paper": papers_emb_final,
+        }
 
     def message(self, x_j: Tensor) -> Tensor:
         return x_j
