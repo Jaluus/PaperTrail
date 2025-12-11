@@ -3,7 +3,7 @@ import torch
 from torch import nn, Tensor
 
 from torch_sparse import SparseTensor, matmul
-
+from torch_scatter import scatter_mean
 from torch_geometric.nn.conv.gcn_conv import gcn_norm
 from torch_geometric.nn.conv import MessagePassing
 from torch_geometric.data import HeteroData
@@ -18,6 +18,8 @@ class LightGCN(MessagePassing):
         embedding_dim=64,
         K=3,
         add_self_loops=False,
+        add_text_embeddings=False,
+        text_embedding_dim=-1
     ):
         """Initializes LightGCN Model
 
@@ -45,6 +47,18 @@ class LightGCN(MessagePassing):
 
         nn.init.normal_(self.authors_emb.weight, std=0.1)
         nn.init.normal_(self.papers_emb.weight, std=0.1)
+        if add_text_embeddings:
+            self.text_projection_left = nn.Linear(
+                text_embedding_dim,
+                embedding_dim,
+            )
+            self.text_projection_right = nn.Linear(
+                text_embedding_dim,
+                embedding_dim
+            )
+        else:
+            self.text_projection_left = None
+            self.text_projection_right = None
 
     def forward(
         self,
@@ -59,6 +73,16 @@ class LightGCN(MessagePassing):
         ).view(2, 1)
         edge_index_offset = edge_index + edge_offset
         emb_author, emb_paper = self.get_embeddings(edge_index_offset)
+        if self.text_projection_left is not None and self.text_projection_right is not None:
+            text_embeddings_paper = data["paper"].x
+            text_embeddings_author = scatter_mean(text_embeddings_paper, edge_index[0], dim=0, dim_size=self.num_authors)
+            projected_text_embeddings_author = self.text_projection_left(text_embeddings_author)
+            projected_text_embeddings_paper = self.text_projection_right(text_embeddings_paper)
+            # concatenate to emb_author and emb_paper
+            emb_author = torch.cat([emb_author, projected_text_embeddings_author], dim=1)
+            emb_paper = torch.cat([emb_paper, projected_text_embeddings_paper], dim=1)
+            #emb_author = emb_author + projected_text_embeddings_author
+            #emb_paper = emb_paper + projected_text_embeddings_paper
         return {"author": emb_author, "paper": emb_paper}
 
     def get_embeddings(
