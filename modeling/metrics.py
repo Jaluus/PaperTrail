@@ -109,7 +109,7 @@ def calculate_metrics(
     # For example for K = 5 one example would be:
     # user 4: [0, 1, 0, 0, 1] means that for user 4 the items at index 1 and 4 in the top K where in the ground truth, all others where not
     # We repeat this for all users to get a [num_users, K] tensor
-    top_K_hits = torch.empty((num_user_ids, k), dtype=torch.float32)
+    top_K_hits = torch.zeros((num_user_ids, k), dtype=torch.float32)
     for user_index, user_id in enumerate(user_ids.tolist()):
         # First we retrieve the ground truth indices for that user by looking it up in the dictionary we created earlier
         ground_truth_indices = user_id_to_ground_truth_ids[user_id]
