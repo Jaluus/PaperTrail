@@ -8,6 +8,9 @@ assert data.is_undirected(), "Data should be undirected"
 # # add the ones vector to every author node
 data["author"].x = torch.ones((data["author"].num_nodes, 256))
 
+FILTER_DEGREE_AUTHOR = 4
+FILTER_DEGREE_PAPER = 2
+
 print(data)
 
 
@@ -131,7 +134,10 @@ def filter_paper_nodes_by_degree(data, min_degree=5):
     return data_filtered
 
 
-data = filter_author_nodes_by_degree(data, min_degree=3)
-data = filter_paper_nodes_by_degree(data, min_degree=2)
+data = filter_author_nodes_by_degree(data, min_degree=FILTER_DEGREE_AUTHOR)
+data = filter_paper_nodes_by_degree(data, min_degree=FILTER_DEGREE_PAPER)
+data = filter_author_nodes_by_degree(data, min_degree=FILTER_DEGREE_AUTHOR)
 
-torch.save(data, "data/hetero_data_filtered_3_2.pt")
+torch.save(
+    data, f"data/hetero_data_filtered_{FILTER_DEGREE_AUTHOR}_{FILTER_DEGREE_PAPER}.pt"
+)
