@@ -119,12 +119,11 @@ Please refer to `model_evaluation.ipynb` for detailed evaluation of the trained 
 
 Our models achieve the following performance:
 
-| Model            | Recall@20 | Precision@20 |
-|------------------|-----------|--------------|
-| GraphSAGE        | 0.258	    | 0.06         |
-| LightGCN         | 0.336     | 0.08         |
-| TextDotProduct   | 0.094     | 0.05         |
-
+| Model           | Recall@5 | Recall@10 | Recall@20 | Recall@50 | Recall@100 |
+|-----------------|--------:|---------:|---------:|---------:|-----------:|
+| GraphSAGE       |  0.1572 |   0.2054 |   0.2582 |   0.3341 |     0.3962 |
+| LightGCN        |  0.1760 |   0.2500 |   0.3359 |   0.4439 |     0.5132 |
+| TextDotProduct  |  0.0506 |   0.0697 |   0.0944 |   0.1353 |     0.1768 |
 
 
 ## References
