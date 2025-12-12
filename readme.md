@@ -13,6 +13,9 @@ against a non-graph baseline that simply uses text embeddings of the papers and 
 
 <img src=figures/plot.png alt="Graph Structure" style="width:50%" />
 
+_Our dataset is represented as a heterogeneous graph with two node types (authors on the right and papers on the left)
+as well as the links between them._
+
 
 See the associated blog post [here](https://medium.com/@jaluus/26c80a5a6a5a).
 
@@ -27,6 +30,9 @@ and foster collaboration between groups.  The goal of our system is to propose a
 given an author one found interesting.
 
 ## Environment setup
+
+This project uses Python 3.10.12.
+
 Install the requirements:
 ```bash
 pip install -r requirements.txt
