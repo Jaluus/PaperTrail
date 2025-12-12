@@ -21,6 +21,8 @@ torch.cuda.manual_seed_all(42)
 
 FILE_DIR = os.path.dirname(os.path.abspath(__file__))
 DATA_PATH = os.path.join(FILE_DIR, "data", "hetero_data.pt")
+MODEL_OUTPUT_PATH = os.path.join(FILE_DIR, "checkpoints")
+DATA_OUTPUT_PATH = os.path.join(FILE_DIR, "out")
 
 # Hyperparameters
 ITERATIONS = 50000
@@ -96,6 +98,11 @@ metrics = {
     "test_precision20": [],
     "step": [],
 }
+
+metrics_path = os.path.join(DATA_OUTPUT_PATH, f"metrics_{model_name}.pkl")
+loss_path = os.path.join(DATA_OUTPUT_PATH, f"loss_{model_name}.pkl")
+model_path = os.path.join(MODEL_OUTPUT_PATH, f"model_{model_name}_latest.pth")
+final_model_path = os.path.join(MODEL_OUTPUT_PATH, f"model_{model_name}_final.pth")
 
 for iter in range(ITERATIONS):
 
@@ -184,17 +191,17 @@ for iter in range(ITERATIONS):
         metrics["train_precision20"].append(train_precision)
         metrics["val_precision20"].append(val_precision)
 
-        with open(f"metrics_{model_name}.pkl", "wb") as f:
+        with open(metrics_path, "wb") as f:
             pickle.dump(metrics, f)
-        with open(f"loss_{model_name}.pkl", "wb") as f:
+        with open(loss_path, "wb") as f:
             pickle.dump(train_losses, f)
 
-        torch.save(model.state_dict(), f"model_{model_name}_latest.pth")
+        torch.save(model.state_dict(), model_path)
         model.train()
 
 
-torch.save(model.state_dict(), f"model_{model_name}_final.pth".format())
-with open(f"metrics_{model_name}.pkl", "wb") as f:
+torch.save(model.state_dict(), final_model_path)
+with open(metrics_path, "wb") as f:
     pickle.dump(metrics, f)
-with open(f"loss_{model_name}.pkl", "wb") as f:
+with open(loss_path, "wb") as f:
     pickle.dump(train_losses, f)
