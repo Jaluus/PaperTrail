@@ -51,22 +51,6 @@ However, to save time, we provide preprocessed data files:
 
 The data may also be downloaded directly by running the script `scripts/download_data.sh`.
 
-## Folder Structure
-
-```bash
-data/  
-    ├── json/                # Raw JSON files downloaded from the source  
-    ├── raw_data.pkl         # Raw data in pickle format  
-    ├── processed_data.pkl   # Processed data ready for graph construction
-    ├── hetero_data_no_coauthor.pt # HeteroData object with degree filtering
-    ├── hetero_data_filtered_3_2.pt # HeteroData object with degree filtering
-    └── preparation_scripts/ # Scripts to prepare and process raw data
-modeling/  
-    ├── models/         # model class implementations (LightGCN, HeteroGCN, Text Dot Product Baseline)
-scripts/
-    └── download_data.sh     # Script to download the preprocessed data from AWS
-```
-
 ## Graph Structure
 
 **Node Types:** Authors, Papers  
@@ -84,35 +68,46 @@ problem, simple metrics such as accuracy or AUC may not be able to capture the q
 Therefore, we evaluate our models using **personalized ranking metrics**: _Recall@K_ and _Precision@K_.
 The metrics are computed per user in the test set and then averaged across all users.
 - **Recall@K**: Measures the proportion of relevant items that are successfully retrieved in the top K recommendations.
-  
-  $$
-  Recall@K = \frac{|\{relevant\_items\} \cap \{recommended\_items@K\}|}{|\{relevant\_items\}|}
-  $$
 - **Precision@K**: Measures the proportion of recommended items in the top K that are relevant.
-  
-  $$
-  Precision@K = \frac{|\{relevant\_items\} \cap \{recommended\_items@K\}|}{K}
-  $$
-
-## Training the Recommender System Models
-
-First, train the models:
-* GraphSage: `python -m train`
-* LightGCN: `python -m train --LightGCN`
-
-You can run the `analyze_results.ipynb` notebook in the meantime to produce some plots of training metrics.
-
-Afterwards, evaluate the models by using the `model_evaluation.ipynb` notebook.
 
 
 ## Loss Function
 
-We utilize a Bayesian Personalized Ranking (BPR) loss, a pairwise objective which encourages the predictions of positive samples to be higher than negative samples for each user.
+We utilize a Bayesian Personalized Ranking (BPR) loss [4], a pairwise objective which encourages the predictions of
+positive samples to be higher than negative samples for each user.
 
-$$
-L_{BPR} = - \frac{1}{|E_{pos}(u^*)|\cdot|E_{neg}(u^*)|} \sum_{(u^*,v_{pos}) \in E_{pos}(u^*)} \sum_{(u^*,v_{neg}) \in E_{neg}(u^*)} -log(f_\theta(u^*, v_{pos}) - f_\theta(u^*, v_{neg}))
-$$
+See the [blog post](https://medium.com/@jaluus/26c80a5a6a5a) for more details.
 
-$\hat{y}_{u}$: predicted score of a positive sample
 
-$\hat{y}_{uj}$: predicted score of a negative sample
+## Models
+
+We implement and compare two graph-based recommender system models:
+1. **GraphSage** [3]: A Graph Neural Network (GNN) that generates node embeddings by aggregating
+features from a node's local neighborhood. We adapt GraphSage for our heterogeneous bipartite graph using PyG [2], see
+`modeling/models/simpleGNN.py`.
+2. **LightGCN** [4]: A simplified model using only neighborhood aggregation without feature transformation or 
+nonlinear activation. It is transductive, as the embeddings are learned.
+See `modeling/models/LightGCN.py` for the implementation.
+3. **TextDotProduct**: A non-graph baseline that computes the dot product between author and paper text embeddings.
+The author embeddings are computed as the mean of the embeddings of their authored papers that should be seen
+during training. See `modeling/models/textDotProduct.py` for the implementation.
+## Training the Recommender System Models
+
+* GraphSage: `python -m train`
+* LightGCN: `python -m train --LightGCN`
+
+To produce plots of training metrics, run the `analyze_results.ipynb` notebook.
+
+Afterwards, evaluate the models by using the `model_evaluation.ipynb` notebook.
+
+
+## References
+
+[1] He, Xiangnan, et al. “LightGCN: Simplifying and Powering Graph Convolution Network for Recommendation” SIGIR 2020.
+
+[2] Fey, Matthias, and Jan E. Lenssen. “Fast Graph Representation Learning with PyTorch Geometric” ICLR Workshop on Representation Learning on Graphs and Manifolds, 2019.
+
+[3] Hamilton, William L., Rex Ying, and Jure Leskovec. “Inductive Representation Learning on Large Graphs” NeurIPS 2017.
+
+[4] Rendle, Steffen, et al. “BPR: Bayesian Personalized Ranking from Implicit Feedback.” arXiv:1205.2618, arXiv, 9 May 2012.
+
