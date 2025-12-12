@@ -21,6 +21,10 @@ torch.cuda.manual_seed_all(42)
 
 FILE_DIR = os.path.dirname(os.path.abspath(__file__))
 DATA_PATH = os.path.join(FILE_DIR, "data", "hetero_data.pt")
+if not os.path.exists(DATA_PATH):
+    raise FileNotFoundError(
+        "Data file not found. Download the file first! Check the Readme for instructions."
+    )
 
 # Hyperparameters
 ITERATIONS = 100000
