@@ -11,7 +11,7 @@ A graph-based recommendation system for helping conference authors discover rele
 </div>
 
 <p align="center">
-  <img src="figures/plot.png" alt="PaperTrail heterogeneous graph (authors ↔ papers)" width="400" />
+  <img src="figures/plot_horizontal_slim.png" alt="PaperTrail heterogeneous graph (authors ↔ papers"  />
 </p>
 <p align="center">
   <em>Figure 1: PaperTrail represents authors and papers as a bipartite graph; an edge indicates authorship. While the author features are initialized as vectors of 1s, the node features of the papers are initialized by their text embeddings from the abstracts and titles.</em>
