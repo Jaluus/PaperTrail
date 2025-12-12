@@ -23,7 +23,7 @@ FILE_DIR = os.path.dirname(os.path.abspath(__file__))
 DATA_PATH = os.path.join(FILE_DIR, "data", "hetero_data.pt")
 
 # Hyperparameters
-ITERATIONS = 100000
+ITERATIONS = 50000
 BATCH_SIZE = 4096 * 16
 LR = 1e-4
 NEG_SAMPLE_RATIO = 1
@@ -71,7 +71,7 @@ if args.LightGCN:
     )
     print("Using LightGCN model.")
 else:
-    model_name = "GNN_full"
+    model_name = "GraphSAGE"
     model = SimpleGNN(
         data=train_data,
         embedding_dim=256,
