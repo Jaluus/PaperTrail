@@ -10,6 +10,10 @@ We attempt to use the graph structure as well as textual features (title and abs
 on their previous publications. We compare two graph neural network models, GraphSAGE and LightGCN,
 against a non-graph baseline that simply uses text embeddings of the papers and dot product similarity.
 
+
+<img src=figures/plot.png alt="Graph Structure" style="width:50%" />
+
+
 See the associated blog post [here](https://medium.com/@jaluus/26c80a5a6a5a).
 
 ## Motivation
@@ -51,13 +55,6 @@ However, to save time, we provide preprocessed data files:
 - Full Graph Data: [Download Full Graph Data](https://papertraildata.s3.us-west-1.amazonaws.com/hetero_data.pt)
 
 The data may also be downloaded directly by running the script `scripts/download_data.sh`.
-
-## Graph Structure
-
-We represent the relationships between authors and papers as a heterogeneous bipartite graph: each author and paper represents
-a node, and the author nodes are connected to the paper nodes they have authored.
-
-<img src=figures/plot.png alt="Graph Structure" style="width:50%" />
 
 
 ## Models
