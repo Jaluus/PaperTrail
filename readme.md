@@ -54,10 +54,8 @@ The data may also be downloaded directly by running the script `scripts/download
 
 ## Graph Structure
 
-**Node Types:** Authors, Papers  
-**Edge Types:** Author writes Paper, Paper written by Author (reverse edges)
-**Node Features:** Paper embeddings (Text embeddings from abstracts and titles), Author features (Vector of Ones)
-**Dimensionality:** 256 for paper embeddings, generated using OpenAI's _text-embedding-3-large_ model.
+We represent the relationships between authors and papers as a heterogeneous bipartite graph: each author and paper represents
+a node, and the author nodes are connected to the paper nodes they have authored.
 
 <img src=figures/plot.png alt="Graph Structure" style="width:50%" />
 
