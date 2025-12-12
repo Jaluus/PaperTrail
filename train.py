@@ -1,10 +1,10 @@
 import matplotlib.pyplot as plt
-from modeling.sampling import sample_minibatch_V2
+from modeling.sampling import sample_minibatch
 from modeling.metrics import calculate_metrics
 from modeling.losses import BPR_loss
 import torch_geometric.transforms as T
-from modeling.models.lightGCN2 import LightGCN
-from modeling.models.simple_V2 import Model
+from modeling.models.lightGCN import LightGCN
+from modeling.models.simpleGNN import SimpleGNN
 import pickle
 import time
 import torch
@@ -14,12 +14,6 @@ import argparse
 
 parser = argparse.ArgumentParser()
 parser.add_argument("--LightGCN", action="store_true", help="Whether to use LightGCN")
-parser.add_argument(
-    "--include-coauthor-edges",
-    action="store_true",
-    help="Whether to include coauthor edges in the training data",
-)
-
 args = parser.parse_args()
 
 torch.manual_seed(42)
@@ -42,15 +36,12 @@ train_data, val_data, test_data = T.RandomLinkSplit(
     rev_edge_types=[("paper", "rev_writes", "author")],
 )(data)
 
-MODEL_NAME = "GNN_full"
 
-if args.include_coauthor_edges:
-    MODEL_NAME = "GNN_coauthor_full"
-    train_data = add_coauthor_edges(train_data)
-    val_data = add_coauthor_edges(val_data)
-    test_data = add_coauthor_edges(test_data)
-elif args.LightGCN:
-    MODEL_NAME = "LightGCN5_full"
+if args.LightGCN:
+    MODEL_NAME = "LightGCN"
+else:
+    MODEL_NAME = "GNN_full"
+
 
 ITERATIONS = 100000
 LR = 1e-4
@@ -86,7 +77,7 @@ if args.LightGCN:
         K=5,
     )
 else:
-    model = Model(
+    model = SimpleGNN(
         data=train_data,
         embedding_dim=256,
         num_layers=5,
@@ -115,20 +106,25 @@ metrics = {
 }
 
 for iter in range(ITERATIONS):
+
+    average_loss = (
+        sum(train_losses[-100:]) / len(train_losses[-100:])
+        if len(train_losses) > 0
+        else 0
+    )
+
     print(
-        f"Iteration {iter + 1}/{ITERATIONS} | Average Loss over last 100 iters: {sum(train_losses[-100:])/len(train_losses[-100:]) if len(train_losses) > 0 else 0:.05f}",
+        f"Iteration {iter + 1}/{ITERATIONS} | Average Loss over last 100 iters: {average_loss:.05f}",
         end="\r",
     )
 
     # mini batching
     start_time = time.time()
-    sampled_author_ids, sampled_pos_paper_ids, sampled_neg_paper_ids = (
-        sample_minibatch_V2(
-            data=train_data,
-            edge_type=TEST_EDGE_TYPE,
-            batch_size=BATCH_SIZE,
-            neg_sample_ratio=NEG_SAMPLE_RATIO,
-        )
+    sampled_author_ids, sampled_pos_paper_ids, sampled_neg_paper_ids = sample_minibatch(
+        data=train_data,
+        edge_type=TEST_EDGE_TYPE,
+        batch_size=BATCH_SIZE,
+        neg_sample_ratio=NEG_SAMPLE_RATIO,
     )
     batching_times.append(time.time() - start_time)
 
@@ -210,11 +206,11 @@ for iter in range(ITERATIONS):
             train_losses,
             open("loss_{}.pkl".format(MODEL_NAME), "wb"),
         )
-        torch.save(model.state_dict(), "model_{}_{}.pth".format(MODEL_NAME, iter + 1))
+        torch.save(model.state_dict(), f"model_{MODEL_NAME}_{iter + 1}.pth")
         model.train()
 
 
-torch.save(model.state_dict(), "model_{}_final.pth".format(MODEL_NAME))
+torch.save(model.state_dict(), f"model_{MODEL_NAME}_final.pth".format())
 
 # save the train_loss curve
 plt.plot(train_losses, label="train")
