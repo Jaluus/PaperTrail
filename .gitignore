@@ -2,3 +2,4 @@ data/*.pt
 data/*.pkl
 data/json
 example
+__pycache__/

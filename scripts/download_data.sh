@@ -7,7 +7,6 @@ FILENAMES=(
     "processed_data.pkl"
     "processed_normalized_data.pkl"
     "hetero_data.pt"
-    "hetero_data_no_coauthor.pt"
 )
 
 DATA_DIR=${1:-"./data"}
@@ -15,6 +14,5 @@ DATA_DIR=${1:-"./data"}
 for FILENAME in "${FILENAMES[@]}"; do
     echo "Downloading $FILENAME..."
     wget "${URL_BASE}${FILENAME}" -O "${DATA_DIR}/${FILENAME}"
-    unzip -o "${DATA_DIR}/${FILENAME}" -d "${DATA_DIR}"
     echo "Downloaded $FILENAME to ${DATA_DIR}/${FILENAME}"
 done

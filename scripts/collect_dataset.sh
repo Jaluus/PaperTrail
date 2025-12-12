@@ -1,0 +1,6 @@
+python data/preparation_scripts/0_download_data.py
+python data/preparation_scripts/1_json_to_df.py
+python data/preparation_scripts/2_add_embeddings_to_df.py
+python data/preparation_scripts/3_normalize_data.py
+python data/preparation_scripts/4_pandas_to_pyg.py
+python data/preparation_scripts/5_filter_data.py
