@@ -41,7 +41,7 @@ data/
 modeling/  
     ├── models/         # model class implementations (LightGCN, HeteroGCN, Text Dot Product Baseline)
 scripts/
-    ├── download_data.sh     # Script to download the preprocessed data from AWS
+    └── download_data.sh     # Script to download the preprocessed data from AWS
 ```
 
 ## Graph Structure
