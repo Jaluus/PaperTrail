@@ -1,5 +1,6 @@
-import torch
 from functools import lru_cache
+
+import torch
 
 
 # We are caching the function as it can be called multiple times with the same edge_index during evaluation

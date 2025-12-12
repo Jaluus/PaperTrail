@@ -1,10 +1,10 @@
 import os
+
 import numpy as np
 import pandas as pd
 import torch
-from torch_geometric.data import HeteroData
 import torch_geometric.transforms as T
-
+from torch_geometric.data import HeteroData
 
 FILE_DIR = os.path.dirname(os.path.abspath(__file__))
 data_path = os.path.join(FILE_DIR, "..", "processed_normalized_data.pkl")

@@ -1,8 +1,8 @@
-from torch_geometric.nn import to_hetero
-from torch_geometric.data import HeteroData
-import torch.nn.functional as F
-from torch_geometric.nn.conv import SAGEConv
 import torch
+import torch.nn.functional as F
+from torch_geometric.data import HeteroData
+from torch_geometric.nn import to_hetero
+from torch_geometric.nn.conv import SAGEConv
 
 
 class GNN(torch.nn.Module):
@@ -45,7 +45,7 @@ class GNN(torch.nn.Module):
         return self.out_conv(x, edge_index)
 
 
-class Model(torch.nn.Module):
+class SimpleGNN(torch.nn.Module):
     def __init__(
         self,
         data: HeteroData,

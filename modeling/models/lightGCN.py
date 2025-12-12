@@ -1,11 +1,9 @@
 import torch
-from torch import nn, Tensor
-
-from torch_sparse import SparseTensor, matmul
-
-from torch_geometric.nn.conv.gcn_conv import gcn_norm
-from torch_geometric.nn.conv import MessagePassing
+from torch import Tensor, nn
 from torch_geometric.data import HeteroData
+from torch_geometric.nn.conv import MessagePassing
+from torch_geometric.nn.conv.gcn_conv import gcn_norm
+from torch_sparse import SparseTensor, matmul
 
 
 class LightGCN(MessagePassing):

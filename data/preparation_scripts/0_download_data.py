@@ -1,6 +1,7 @@
 import os
-import requests
+
 import bs4
+import requests
 
 urls = {
     "neurips": "https://neurips.cc/Downloads",

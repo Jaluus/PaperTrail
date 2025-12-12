@@ -1,6 +1,6 @@
 import torch
-from torch_scatter import scatter_mean
 from torch_geometric.data import HeteroData
+from torch_scatter import scatter_mean
 
 
 class TextDotProductModel(torch.nn.Module):

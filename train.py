@@ -1,16 +1,18 @@
-import matplotlib.pyplot as plt
-from modeling.sampling import sample_minibatch
-from modeling.metrics import calculate_metrics
-from modeling.losses import BPR_loss
-import torch_geometric.transforms as T
-from modeling.models.lightGCN import LightGCN
-from modeling.models.simpleGNN import SimpleGNN
+import argparse
 import pickle
 import time
+
+import matplotlib.pyplot as plt
 import torch
+import torch_geometric.transforms as T
 from torch import optim
+
+from modeling.losses import BPR_loss
+from modeling.metrics import calculate_metrics
+from modeling.models.lightGCN import LightGCN
+from modeling.models.simpleGNN import SimpleGNN
+from modeling.sampling import sample_minibatch
 from modeling.utils import add_coauthor_edges
-import argparse
 
 parser = argparse.ArgumentParser()
 parser.add_argument("--LightGCN", action="store_true", help="Whether to use LightGCN")

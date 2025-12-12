@@ -1,6 +1,7 @@
 import os
-import pandas as pd
+
 import openai
+import pandas as pd
 
 API_KEY = "your-openai-api-key"
 client = openai.OpenAI(api_key=API_KEY)
