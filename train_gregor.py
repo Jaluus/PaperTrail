@@ -33,27 +33,28 @@ train_data, val_data, test_data = T.RandomLinkSplit(
     num_val=0.1,
     num_test=0.1,
     neg_sampling_ratio=0.0,
-    disjoint_train_ratio=0.3,
+    disjoint_train_ratio=0.0,
     add_negative_train_samples=False,
     is_undirected=True,
     edge_types=[("author", "writes", "paper")],
     rev_edge_types=[("paper", "rev_writes", "author")],
 )(data)
 
-MODEL_NAME = "GNN_03"
+MODEL_NAME = "GNN_full"
 
 if args.include_coauthor_edges:
-    MODEL_NAME = "GNN_coauthor_03"
+    MODEL_NAME = "GNN_coauthor_full"
     train_data = add_coauthor_edges(train_data)
     val_data = add_coauthor_edges(val_data)
     test_data = add_coauthor_edges(test_data)
 elif args.LightGCN:
-    MODEL_NAME = "LightGCN_03"
+    MODEL_NAME = "LightGCN_full"
 
 ITERATIONS = 100000
 LR = 1e-4
 
-ITERS_PER_EVAL = 1000
+ITERS_PER_EVAL = 5000
+
 K = 20
 
 BATCH_SIZE = 4096 * 16
@@ -184,8 +185,8 @@ for iter in range(ITERATIONS):
         train_recall, train_precision = calculate_metrics(
             author_embeddings,
             paper_embeddings,
-            train_edge_index,
-            [train_supervision_edge_index],
+            train_supervision_edge_index,
+            [],
             K,
         )
 
