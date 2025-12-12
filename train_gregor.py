@@ -48,7 +48,7 @@ if args.include_coauthor_edges:
     val_data = add_coauthor_edges(val_data)
     test_data = add_coauthor_edges(test_data)
 elif args.LightGCN:
-    MODEL_NAME = "LightGCN_full"
+    MODEL_NAME = "LightGCN5_full"
 
 ITERATIONS = 100000
 LR = 1e-4
@@ -81,7 +81,7 @@ if args.LightGCN:
         num_authors=train_data["author"].num_nodes,
         num_papers=train_data["paper"].num_nodes,
         embedding_dim=256,
-        K=6,
+        K=5,
     )
 else:
     model = Model(
@@ -89,7 +89,6 @@ else:
         embedding_dim=256,
         num_layers=5,
     )
-
 
 model = model.to(device)
 model.train()
