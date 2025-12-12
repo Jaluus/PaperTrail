@@ -54,6 +54,9 @@ author_to_paper_edge_index = np.array(
 hetero_data = HeteroData()
 
 hetero_data["author"].node_id = torch.arange(len(author_nodes))
+hetero_data["author"].x = torch.ones(
+    (len(author_nodes), paper_node_embeddings.shape[1])
+).float()
 
 hetero_data["paper"].node_id = torch.arange(len(paper_nodes))
 hetero_data["paper"].x = torch.from_numpy(paper_node_embeddings).float()

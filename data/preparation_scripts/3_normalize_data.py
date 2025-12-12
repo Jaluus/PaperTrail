@@ -4,7 +4,7 @@ import pandas as pd
 
 FILE_DIR = os.path.dirname(os.path.abspath(__file__))
 data_path = os.path.join(FILE_DIR, "..", "processed_data.pkl")
-output_path = os.path.join(FILE_DIR, "..", "processed_normalized_data_V2.pkl")
+output_path = os.path.join(FILE_DIR, "..", "processed_normalized_data.pkl")
 
 data: pd.DataFrame = pd.read_pickle(data_path)
 data.head()
