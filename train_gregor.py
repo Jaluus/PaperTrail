@@ -33,7 +33,7 @@ train_data, val_data, test_data = T.RandomLinkSplit(
     num_val=0.1,
     num_test=0.1,
     neg_sampling_ratio=0.0,
-    disjoint_train_ratio=0.0,
+    disjoint_train_ratio=0.3,
     add_negative_train_samples=False,
     is_undirected=True,
     edge_types=[("author", "writes", "paper")],
@@ -171,7 +171,7 @@ for iter in range(ITERATIONS):
             author_embeddings,
             paper_embeddings,
             val_edge_index,
-            [train_edge_index],
+            [train_edge_index, train_supervision_edge_index],
             K,
         )
 
@@ -179,7 +179,7 @@ for iter in range(ITERATIONS):
             author_embeddings,
             paper_embeddings,
             test_edge_index,
-            [train_edge_index],
+            [train_edge_index, train_supervision_edge_index],
             K,
         )
 
@@ -192,7 +192,7 @@ for iter in range(ITERATIONS):
             author_embeddings,
             paper_embeddings,
             train_edge_index,
-            [],
+            [train_supervision_edge_index],
             K,
         )
 
