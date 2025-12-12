@@ -9,8 +9,8 @@ import torch
 def generate_ground_truth_mapping(edge_index: torch.Tensor) -> dict[int, set[int]]:
     author_id_to_ground_truth_ids: dict[int, set[int]] = {}
     for i in range(edge_index.shape[1]):
-        author_id = edge_index[0][i].paper()
-        ground_truth_id = edge_index[1][i].paper()
+        author_id = edge_index[0][i].item()
+        ground_truth_id = edge_index[1][i].item()
         if author_id not in author_id_to_ground_truth_ids:
             author_id_to_ground_truth_ids[author_id] = set()
         author_id_to_ground_truth_ids[author_id].add(ground_truth_id)
@@ -33,8 +33,8 @@ def compute_recall_precision_at_k(
     recall_per_author = num_correct_per_author / num_relevant_per_author
     precision_per_author = num_correct_per_author / k
 
-    recall = recall_per_author.mean().paper()
-    precision = precision_per_author.mean().paper()
+    recall = recall_per_author.mean().item()
+    precision = precision_per_author.mean().item()
     return recall, precision
 
 
@@ -126,7 +126,7 @@ def calculate_metrics(
     # It stores for each author the list of ground truth paper indices
     # This effectively gives us access to how many papers each author likes and what they are
     ground_truth_indices = [
-        author_id_to_ground_truth_ids[author_id.paper()] for author_id in author_ids
+        author_id_to_ground_truth_ids[author_id.item()] for author_id in author_ids
     ]
 
     # Now we can compute recall and precision
