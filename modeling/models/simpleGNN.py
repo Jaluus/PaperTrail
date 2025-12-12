@@ -19,7 +19,7 @@ class GNN(torch.nn.Module):
                     embedding_dim,
                     embedding_dim,
                     aggr="mean",
-                    project=True,
+                    project=False,
                     normalize=True,
                 )
                 for _ in range(num_layers - 1)
