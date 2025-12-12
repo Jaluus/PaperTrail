@@ -25,8 +25,8 @@ The goal of our system is to propose a ranked list of interesting papers given a
 - Processed Normalized Data: [Download Processed Data](https://papertraildata.s3.us-west-1.amazonaws.com/processed_normalized_data.pkl)
 - Full Graph Data: [Download Full Graph Data](https://papertraildata.s3.us-west-1.amazonaws.com/hetero_data.pt)
 - Graph Without Coauthors Data: [Download Graph Without Coauthors Data](https://papertraildata.s3.us-west-1.amazonaws.com/hetero_data_no_coauthor.pt)
-- [Deprecated] Early models: [Find on Huggingface](https://huggingface.co/gregorkrzmanc/papertrail_models/tree/main)
-- Models and results: see `download_models.sh`
+
+The data may also be downloaded by running the script `scripts/download_data.sh`.
 
 ## Folder Structure
 
