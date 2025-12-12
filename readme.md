@@ -68,41 +68,7 @@ Run the `analyze_results.ipynb` notebook.
 
 ## Metrics
 
-We evalaluate our model using the following metrics
-
-$$
-\text{Recall} = \frac{TP}{TP + FP}
-$$
-
-$$
-\text{Precision} = \frac{TP}{TP + FN}
-$$
-
-**Dicounted Cumulative Gain (DCG)** at rank position p is defined as:
-
-$$
-\text{DCG}_\text{p} = \sum_{i = 1}^p \frac{2^{rel_i} - 1}{\log_2{(i + 1)}}
-$$
-
-p: a particular rank position
-
-$rel_i \in \{0, 1\}$ : graded relevance of the result at position $i$
-
-**Idealised Dicounted Cumulative Gain (IDCG)**, namely the maximum possible DCG, at rank position $p$ is defined as:
-
-$$
-\text{IDCG}_\text{p} = \sum_{i = 1}^{|REL_p|} \frac{2^{rel_i} - 1}{\log_2{(i + 1)}}
-$$
-
-$|REL_p|$ : list of items ordered by their relevance up to position p
-
-**Normalized Dicounted Cumulative Gain (NDCG)** at rank position $p$ is defined as:
-
-$$
-\text{nDCG}_\text{p} = \frac{\text{DCG}_p}{\text{nDCG}_p}
-$$
-
-Specifically, we use the metrics recall@K, precision@K, and NDCG@K. @K indicates that these metrics are computed on the top K recommendations.
+We use the metrics Recall@K, Precision@K. @K indicates that these metrics are computed on the top K recommendations.
 
 ## Loss Function
 
