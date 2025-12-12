@@ -4,7 +4,9 @@
 
 A graph-based recommendation system for helping conference authors discover relevant papers using an author–paper graph and text embeddings. This project has been created for [Stanford CS224W: Graph Neural Networks](https://web.stanford.edu/class/cs224w/).
 
-[[Blog post]](https://medium.com/@jaluus/26c80a5a6a5a) · [[Quickstart]](#-quickstart) · [[Data]](#-data) · [[Training]](#-training) · [[Evaluation]](#-evaluation)
+[Jan-Lucas Uslu](https://uslu.ai/) · [Gregor Kržmanc](https://github.com/gregorkrz)
+
+[[Blog post]](https://medium.com/@jaluus/26c80a5a6a5a) · [[Quickstart]](#quickstart) · [[Data]](#data) · [[Training]](#training) · [[Evaluation]](#evaluation)
 
 </div>
 
