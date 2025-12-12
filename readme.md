@@ -35,14 +35,13 @@ data/
     ├── json/                # Raw JSON files downloaded from the source  
     ├── raw_data.pkl         # Raw data in pickle format  
     ├── processed_data.pkl   # Processed data ready for graph construction
+    ├── hetero_data_no_coauthor.pt # HeteroData object with degree filtering
+    ├── hetero_data_filtered_3_2.pt # HeteroData object with degree filtering
     └── preparation_scripts/ # Scripts to prepare and process raw data
-src/  
-    ├── evaluation/     # Evaluation metrics and scripts
-    ├── models/         # GNN model class implementations
-    └── transforms/
+modeling/  
+    ├── models/         # model class implementations (LightGCN, HeteroGCN, Text Dot Product Baseline)
 scripts/
     ├── download_data.sh     # Script to download the preprocessed data from AWS
-    └── download_models.sh   # Download the model checkpoints from AWS
 ```
 
 ## Graph Structure
@@ -54,13 +53,9 @@ scripts/
 **Dimensionality:** 256 for paper embeddings
 
 ## Model training
+Training the HeteroGCN model: `python -m train`
 
-```
-
-python -m train_gregor
-python -m train_gregor --LightGCN
-
-```
+Training the LightGCN model: `python -m train --LightGCN`
 
 ## Model evaluation
 
