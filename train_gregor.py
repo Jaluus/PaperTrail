@@ -13,10 +13,16 @@ from modeling.utils import add_coauthor_edges
 import argparse
 
 parser = argparse.ArgumentParser()
-parser.add_argument("--LightGCN", action="store_true",
-                    help="Whether to use LightGCN")
-parser.add_argument("--include-coauthor-edges", action="store_true",
-                    help="Whether to include coauthor edges in the training data")
+parser.add_argument(
+    "--LightGCN",
+    action="store_true",
+    help="Whether to use LightGCN",
+)
+parser.add_argument(
+    "--include-coauthor-edges",
+    action="store_true",
+    help="Whether to include coauthor edges in the training data",
+)
 
 args = parser.parse_args()
 
@@ -110,7 +116,7 @@ metrics = {
     "train_precision20": [],
     "val_precision20": [],
     "test_precision20": [],
-    "step": []
+    "step": [],
 }
 
 for iter in range(ITERATIONS):
@@ -176,7 +182,6 @@ for iter in range(ITERATIONS):
             K,
         )
 
-
         with torch.no_grad():
             embeddings = model.forward(train_data)
             author_embeddings = embeddings["author"]
@@ -193,7 +198,6 @@ for iter in range(ITERATIONS):
         avg_train_loss = sum(train_losses[-ITERS_PER_EVAL:]) / len(
             train_losses[-ITERS_PER_EVAL:]
         )
-
 
         print(
             f"[Iteration {iter + 1}/{ITERATIONS}] train_loss: {avg_train_loss:.05f}, val_recall@{K}: {val_recall:.05f}, val_precision@{K}: {val_precision:.05f}, train_recall@{K}: {train_recall:.05f}, train_precision@{K}: {train_precision:.05f}"

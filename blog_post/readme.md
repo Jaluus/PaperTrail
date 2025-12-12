@@ -92,35 +92,18 @@ We use a simple dot product decoder to compute the scores between authors and pa
 
 $f(h_i, h_j') = h_i^T h_j'$
 
-### Neural Graph Collaborative Filtering (NGCF)
+### Text embedding averaging baseline
 
-Neural Graph Collaborative Filtering (NGCF) [3] is a graph neural network architecture for collaborative filtering that operates directly on the user-item interaction graph.
-In our setting, we treat authors as users and papers as items, with an edge indicating authorship.
+We start with a simple text-only baseline that ignores message passing and uses only the LLM embeddings of papers.
+We refer to this baseline as TextDotProduct.
+For each author, we compute an author profile vector by averaging the embeddings of the papers they authored in the training message passing graph.
+Formally, let $h_j^{(0)}$ denote the initial text embedding of a paper node $j$, and let $N(i)$ denote the set of paper neighbors of an author node $i$ in the training message passing graph.
 
-Starting from initial author and paper embeddings $h^{(0)}$, NGCF repeatedly propagates information through the bipartite graph to capture higher-order connectivities (i.e., multi-hop relationships between authors and papers).
-At each layer, it applies learnable feature transformations and nonlinearities.
-It also augments message passing with a _bi-interaction_ term that explicitly models feature interactions between a node and its neighbor.
+$$ h_i = \frac{1}{|N(i)|} \sum_{j \in N(i)} h_j^{(0)}, \qquad h_j = h_j^{(0)}. $$
 
-The layer-wise embedding update for a node $i$ can be written as:
-
-$$
-h_i^{(k)} = \sigma\left(
-\sum_{j \in N(i)} \frac{1}{\sqrt{|N(i)|} \sqrt{|N(j)|}}
-\left(
-W_1^{(k)} h_j^{(k-1)} + W_2^{(k)} \left(h_j^{(k-1)} \odot h_i^{(k-1)}\right)
-\right)
-\right),
-$$
-
-where $W_1^{(k)}$ and $W_2^{(k)}$ are learnable weight matrices, $\odot$ denotes element-wise product, and $\sigma$ is typically a LeakyReLU activation.
-
-Finally, NGCF concatenates the representations from all layers to form the final embedding used by our dot product decoder:
-
-$$ h_i = h_i^{(0)} \,\|\, h_i^{(1)} \,\|\, \dots \,\|\, h_i^{(K)}. $$
-
-Overall, NGCF is a more expressive but heavier model than LightGCN.
-It introduces additional parameters and nonlinearities that can improve performance, but also increase training cost and the risk of overfitting.
-Next, we consider LightGCN, which simplifies NGCF by removing feature transformation and nonlinearities while retaining neighborhood aggregation.
+We then rank candidate papers by the same dot product decoder $f(h_i, h_j) = h_i^T h_j$.
+This baseline is a strong sanity check because it measures how much value the graph models add beyond semantic similarity in the paper text embeddings.
+To avoid data leakage, we compute $N(i)$ using only training message passing edges and exclude all training edges when evaluating the top-K recommendations.
 
 ### LightGCN
 
@@ -338,10 +321,9 @@ The values below are placeholders and will be updated once we run the final trai
 
 | Model                     | Recall@20 | Precision@20 | Notes                                                                    |
 | ------------------------- | --------: | -----------: | ------------------------------------------------------------------------ |
-| Text dot product baseline |       TBD |          TBD | Author embedding is the mean of embeddings of previously authored papers |
+| Text embedding averaging  |       TBD |          TBD | Author embedding is the mean of embeddings of previously authored papers |
 | GraphSage                 |       TBD |          TBD | Inductive model that incorporates node features                          |
 | LightGCN                  |       TBD |          TBD | Transductive model that learns embeddings via neighborhood aggregation   |
-| NGCF                      |       TBD |          TBD | Included as background and left for future work                          |
 
 ### Qualitative results
 
@@ -355,6 +337,7 @@ We built a large author-paper bipartite graph from scraped conference metadata a
 We framed paper recommendation as a link prediction task and used a dot product decoder together with the BPR loss to optimize ranking quality.
 
 We compared graph-based recommendation models that trade off expressivity, efficiency, and generalization.
+As a text-only sanity check, we use a Text embedding averaging baseline (TextDotProduct) that builds an author embedding by averaging the embeddings of their previously authored papers.
 LightGCN provides a strong and parameter-efficient transductive baseline, but it cannot naturally handle new authors or new papers without learning new embeddings.
 GraphSage can incorporate node features and generalize inductively to unseen nodes, but its performance depends strongly on feature quality and neighborhood sampling.
 
@@ -366,7 +349,7 @@ Finally, our current graph is largely static and does not explicitly model time,
 Future work could improve both data quality and modeling.
 We can incorporate unique author identifiers from sources such as OpenReview or Semantic Scholar to reduce ambiguity and enrich metadata.
 We can also add additional edge types such as co-authorship, citations, or topic similarity to make the graph structure more informative.
-On the modeling side, we can implement NGCF and feature-aware LightGCN variants to better integrate text features while keeping the benefits of collaborative filtering on graphs.
+On the modeling side, we can explore feature-aware LightGCN variants and richer heterogeneous GNN architectures to better integrate text features while keeping the benefits of collaborative filtering on graphs.
 
 ## References
 

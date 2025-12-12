@@ -38,9 +38,9 @@ class GNN(torch.nn.Module):
         x: torch.Tensor,
         edge_index: torch.Tensor,
     ) -> torch.Tensor:
+
         for conv in self.convs:
-            x = conv(x, edge_index)
-            x = F.relu(x)
+            x = F.relu(conv(x, edge_index))
 
         return self.out_conv(x, edge_index)
 
@@ -55,16 +55,19 @@ class Model(torch.nn.Module):
         super().__init__()
 
         self.embedding_dim = embedding_dim
+        self.num_layers = num_layers
 
         self.gnn = GNN(embedding_dim, num_layers)
-        # Convert GNN model into a heterogeneous variant:
         self.gnn = to_hetero(
             self.gnn,
             metadata=data.metadata(),
             aggr="mean",
         )
 
-    def forward(self, data: HeteroData) -> torch.Tensor:
+    def forward(
+        self,
+        data: HeteroData,
+    ) -> dict[str, torch.Tensor]:
 
         x_dict = {
             "author": data["author"].x,
