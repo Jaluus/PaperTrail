@@ -27,7 +27,7 @@ def sample_minibatch_V2(
     edge_index = data[edge_type].edge_index
     dst_ids = torch.unique(edge_index[1])
 
-    # Here we get the number of all sueprvised edges so we can later sample from them
+    # Here, we get the number of all supervised edges so we can later sample from them
     num_edges = edge_label_index.size(1)
 
     if batch_size == -1:
@@ -284,5 +284,4 @@ def stratified_random_link_split(data, edge_type, rev_edge_type, train_ratio=0.8
     val[edge_type].edge_label_index = edge_index[:, val_idx]
     test[edge_type].edge_label_index = edge_index[:, test_idx]
     return train, val, test
-
 

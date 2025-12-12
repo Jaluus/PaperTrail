@@ -37,6 +37,7 @@ class LightGCN(MessagePassing):
             num_embeddings=self.num_authors,
             embedding_dim=self.embedding_dim,
         )  # e_u^0
+
         self.papers_emb = nn.Embedding(
             num_embeddings=self.num_papers,
             embedding_dim=self.embedding_dim,

@@ -19,7 +19,7 @@ class LightGCN(MessagePassing):
         K=3,
         add_self_loops=False,
         add_text_embeddings=False,
-        text_embedding_dim=-1
+        text_embedding_dim=256
     ):
         """Initializes LightGCN Model
 
@@ -65,7 +65,7 @@ class LightGCN(MessagePassing):
         data: HeteroData
     ) -> dict:
         edge_index = data["author", "writes", "paper"].edge_index
-        edge_index_paper_offset = self.num_papers
+        edge_index_paper_offset = self.num_authors
         #edge_index[1] += edge_index_paper_offset  # shift paper node indices
         edge_offset = torch.tensor(
             [0, edge_index_paper_offset],
@@ -75,7 +75,9 @@ class LightGCN(MessagePassing):
         emb_author, emb_paper = self.get_embeddings(edge_index_offset)
         if self.text_projection_left is not None and self.text_projection_right is not None:
             text_embeddings_paper = data["paper"].x
-            text_embeddings_author = scatter_mean(text_embeddings_paper, edge_index[0], dim=0, dim_size=self.num_authors)
+            #print("paper text embedding size:", text_embeddings_paper.size())
+            #print("edge_index size:", edge_index.size())
+            text_embeddings_author = scatter_mean(text_embeddings_paper[edge_index[1]], edge_index[0], dim=0, dim_size=self.num_authors)
             projected_text_embeddings_author = self.text_projection_left(text_embeddings_author)
             projected_text_embeddings_paper = self.text_projection_right(text_embeddings_paper)
             # concatenate to emb_author and emb_paper
