@@ -130,14 +130,14 @@ Each layer therefore performs only normalized neighborhood aggregation.
 
 At layer $k$, the embedding of a node $i$ is updated by aggregating its neighbors:
 
-$$ h*i^{(k)} = \sum*{j \in N(i)} \frac{1}{\sqrt{|N(i)|} \sqrt{|N(j)|}} h_j^{(k-1)} $$
+$$ h_i^{(k)} = \frac{1}{|N(i)|} \sum_{j \in N(i)} h_j^{(k-1)}, $$
 
 Here, $N(i)$ denotes the neighbors of node $i$ in the author-paper graph.
 The symmetric normalization term prevents high-degree nodes from dominating the propagation.
 
 To obtain the final representation, LightGCN combines the embeddings from all layers:
 
-$$ h*i = \sum*{k=0}^{K} \alpha_k h_i^{(k)}. $$
+$$ h_i = \sum_{k=1}^{K} \alpha_k h_i^{(k)}, $$
 
 For the final embeddings, we use $K=3$ layers of neighborhood aggregation and set all weights to be equal, i.e., $\alpha_k = \frac{1}{K+1}$, similarly to [1].
 This layer aggregation mixes information from different hop distances and helps mitigate over-smoothing.
@@ -166,7 +166,11 @@ $$
 Where $\mathbf{W}^{(k)}_1$ and $\mathbf{W}^{(k)}_2$ are learnable weight matrices, and $\sigma$ is some nonlinearity function.
 We can see that the model has self-loop terms that allow the model to use information from the node itself, which is useful for incorporating node features.
 
-## Loss
+## Training
+
+We train our models using the Adam optimizer with a learning rate of 0.001 and a batch size of 16\*4096 for 100,000 iterations.
+
+### Loss Function
 
 For the link prediction task, one typically uses the binary cross-entropy loss function to train the model.
 One problem with this approach is that this pushes the scores for all negative edges below the scores of all positive edges.
@@ -206,23 +210,15 @@ def BPR_loss(
 For this to work the positive and negative scores need to be "paired" correctly.
 This means that for each author, we need to pair the positive edges with the negative edges.
 
-## Metrics
+### Mini-batching and Negative Sampling
 
-Evaluating a recommendation system can be tricky - even though our model can be viewed as a classifier assigning
-a score to each possible author-paper pair, the vast majority of these pairs are negative samples (i.e., there should be no
-link between the author and the paper). Therefore, standard classification metrics such as accuracy or area under the ROC
-curve are not very informative in this setting.
+To train our models efficiently, we use mini-batching and negative sampling.
+The mini-batching is done by sampling a small subset of positive edges from the graph.
+We can then sample negative edges by randomly selecting paper nodes that are not connected to the sampled authors.
+In a perfect case we would only sample negative edges that are not connected to the author, but this is computationally expensive.
+Thus we use a simpler approach where we randomly sample paper nodes and do not check if they are connected to the author.
 
-We use the standard metrics for evaluating recommendation systems: Precision@K and Recall@K.
-Precision@K measures the proportion of recommended papers in the top K that are relevant to the author,
-while Recall@K measures the proportion of relevant papers that are included in the top K recommendations.
-Both metrics are averaged across authors.
-
-## Training
-
-We train our models using the Adam optimizer and the BPR loss function.
-For all models a use a learning rate of 0.001, batch size of 16\*4096, and a maximum of 100000 iterations.
-We also implemented a custom sampler that samples positive edges and negative edges from the train split.
+The following function samples a mini-batch of positive and negative edges:
 
 ```python
 def sample_minibatch(
@@ -242,33 +238,28 @@ def sample_minibatch(
     Returns:
         tuple: pos_edge_index, neg_edge_index
     """
-    # These are the supervised edges
+    # These are the supervision edges
     edge_label_index = data[edge_type].edge_label_index
 
     # These are the message passing edges
-    # WE will use them to extract the dst node ids
+    # We will use them to extract the destination ids
     edge_index = data[edge_type].edge_index
     dst_ids = torch.unique(edge_index[1])
 
-    # Here we get the number of all sueprvised edges so we can later sample from them
-    num_edges = edge_label_index.size(1)
-
     # We first randomly sample positive edges
-    # This over-represents authors with many positive edges, but it's ok for now
+    # This may over-represent authors with many positive edges, but is quick
+    num_edges = edge_label_index.size(1)
     sampled_pos_edge_idxs = torch.randint(0, num_edges, (batch_size,))
 
     # Tile the author and positive paper indices according to neg_sample_ratio
     # We want to have N negative samples per positive sample, but each positive sample needs to be duplicated N times
-    # This is important for the loss function later
-    sampled_src_ids = edge_label_index[0, sampled_pos_edge_idxs].repeat(
-        neg_sample_ratio
-    )
-    sampled_pos_dst_ids = edge_label_index[1, sampled_pos_edge_idxs].repeat(
-        neg_sample_ratio
-    )
+    # This is important for our BPR loss function later
+    sampled_src_ids     = edge_label_index[0, sampled_pos_edge_idxs].repeat(neg_sample_ratio)
+    sampled_pos_dst_ids = edge_label_index[1, sampled_pos_edge_idxs].repeat(neg_sample_ratio)
 
     # Randomly sample negative paper indices
-    # This may lead to false negatives, but its ok for now
+    # This may lead to false negatives, as we are not checking if the sampled papers are connected to the author
+    # If we have a lot of papers, but only a small fraction of them are connected to the author, this is a reasonable approximation
     sampled_neg_dst_idxs = torch.randint(
         0,
         len(dst_ids),
@@ -281,6 +272,8 @@ def sample_minibatch(
 
 This sampler is used in our training loop to get the positive and negative paired edges for the BPR loss.
 For training we are using a negative sampling ratio of 10, which means that for each positive edge, we sample 10 negative edges.
+
+### Training Loop
 
 The training loop itself is straightforward and follows the standard PyTorch training loop:
 
@@ -320,6 +313,18 @@ for iter in range(ITERATIONS):
     train_loss.backward()
     optimizer.step()
 ```
+
+### Metrics
+
+Evaluating a recommendation system can be tricky - even though our model can be viewed as a classifier assigning
+a score to each possible author-paper pair, the vast majority of these pairs are negative samples (i.e., there should be no
+link between the author and the paper). Therefore, standard classification metrics such as accuracy or area under the ROC
+curve are not very informative in this setting.
+
+We use the standard metrics for evaluating recommendation systems: Precision@K and Recall@K.
+Precision@K measures the proportion of recommended papers in the top K that are relevant to the author,
+while Recall@K measures the proportion of relevant papers that are included in the top K recommendations.
+Both metrics are averaged across authors.
 
 ## Results
 
@@ -365,10 +370,10 @@ On the modeling side, we can implement NGCF and feature-aware LightGCN variants 
 
 ## References
 
-[1] He, Xiangnan, et al. “LightGCN: Simplifying and Powering Graph Convolution Network for Recommendation.” arXiv:2002.02126, arXiv, 7 July 2020. arXiv.org, <https://doi.org/10.48550/arXiv.2002.02126>.
+[1] He, Xiangnan, et al. "LightGCN: Simplifying and Powering Graph Convolution Network for Recommendation" SIGIR 2020.
 
-[2] Fey, Matthias, and Jan E. Lenssen. “Fast Graph Representation Learning with PyTorch Geometric.” ICLR Workshop on Representation Learning on Graphs and Manifolds, 2019.
+[2] Fey, Matthias, and Jan E. Lenssen. "Fast Graph Representation Learning with PyTorch Geometric" ICLR Workshop on Representation Learning on Graphs and Manifolds, 2019.
 
-[3] Wang, Xiang, et al. “Neural Graph Collaborative Filtering.” arXiv:1905.08108, arXiv, 3 July 2020. arXiv.org, <https://doi.org/10.48550/arXiv.1905.08108>.
+[3] Wang et al. "Neural Graph Collaborative Filtering" SIGIR 2019.
 
-[4] Matryoshka Representation Learning <https://arxiv.org/abs/2205.13147>
+[4] Kusupati et al. "Matryoshka Representation Learning", NeurIPS 2022.
