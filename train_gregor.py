@@ -40,15 +40,15 @@ train_data, val_data, test_data = T.RandomLinkSplit(
     rev_edge_types=[("paper", "rev_writes", "author")],
 )(data)
 
-MODEL_NAME = "GNN"
+MODEL_NAME = "GNN_03"
 
 if args.include_coauthor_edges:
-    MODEL_NAME = "GNN_coauthor"
+    MODEL_NAME = "GNN_coauthor_03"
     train_data = add_coauthor_edges(train_data)
     val_data = add_coauthor_edges(val_data)
     test_data = add_coauthor_edges(test_data)
 elif args.LightGCN:
-    MODEL_NAME = "LightGCN"
+    MODEL_NAME = "LightGCN_03"
 
 ITERATIONS = 100000
 LR = 1e-4
@@ -175,13 +175,6 @@ for iter in range(ITERATIONS):
             K,
         )
 
-        test_recall, test_precision = calculate_metrics(
-            author_embeddings,
-            paper_embeddings,
-            test_edge_index,
-            [train_edge_index, train_supervision_edge_index],
-            K,
-        )
 
         with torch.no_grad():
             embeddings = model.forward(train_data)
@@ -200,16 +193,15 @@ for iter in range(ITERATIONS):
             train_losses[-ITERS_PER_EVAL:]
         )
 
+
         print(
-            f"[Iteration {iter + 1}/{ITERATIONS}] train_loss: {avg_train_loss:.05f}, val_recall@{K}: {val_recall:.05f}, val_precision@{K}: {val_precision:.05f}, train_recall@{K}: {train_recall:.05f}, train_precision@{K}: {train_precision:.05f} test_recall@{K}: {test_recall:.05f}, test_precision@{K}: {test_precision:.05f}"
+            f"[Iteration {iter + 1}/{ITERATIONS}] train_loss: {avg_train_loss:.05f}, val_recall@{K}: {val_recall:.05f}, val_precision@{K}: {val_precision:.05f}, train_recall@{K}: {train_recall:.05f}, train_precision@{K}: {train_precision:.05f}"
         )
         metrics["step"].append(iter + 1)
         metrics["train_recall20"].append(train_recall)
         metrics["val_recall20"].append(val_recall)
-        metrics["test_recall20"].append(test_recall)
         metrics["train_precision20"].append(train_precision)
         metrics["val_precision20"].append(val_precision)
-        metrics["test_precision20"].append(test_precision)
         pickle.dump(
             metrics,
             open("metrics_{}.pkl".format(MODEL_NAME), "wb"),
@@ -222,7 +214,7 @@ for iter in range(ITERATIONS):
         model.train()
 
 
-torch.save(model.state_dict(), "model_GNN_final.pth")
+torch.save(model.state_dict(), "model_{}_final.pth".format(MODEL_NAME))
 
 # save the train_loss curve
 plt.plot(train_losses, label="train")
