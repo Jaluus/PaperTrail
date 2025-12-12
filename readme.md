@@ -9,7 +9,7 @@ A graph-based recommendation system for helping conference authors discover rele
 </div>
 
 <p align="center">
-  <img src="figures/plot.png" alt="PaperTrail heterogeneous graph (authors ↔ papers)" width="700" />
+  <img src="figures/plot.png" alt="PaperTrail heterogeneous graph (authors ↔ papers)" width="400" />
 </p>
 
 ## Abstract
@@ -122,24 +122,14 @@ Notes:
 
 We train with **Bayesian Personalized Ranking (BPR)** [4], a pairwise objective that encourages positive edges to score higher than negatives.
 
-$$
-\text{Loss}(u^*) =
-\frac{1}{|E(u^*)|\;|E_{\text{neg}}(u^*)|}
-\sum_{(u^*, v_{\text{pos}})\in E(u^*)}
-\sum_{(u^*, v_{\text{neg}})\in E_{\text{neg}}(u^*)}
--\log\!\left(
-\sigma\big(f_\theta(u^*, v_{\text{pos}}) - f_\theta(u^*, v_{\text{neg}})\big)
-\right)
-$$
+$$\text{Loss}(u^*) = \frac{1}{|E(u^*)|\;|E_{\text{neg}}(u^*)|} \sum_{(u^*, v_{\text{pos}})\in E(u^*)} \sum_{(u^*, v_{\text{neg}})\in E_{\text{neg}}(u^*)} -\log\!\left( \sigma\big(f_\theta(u^*, v_{\text{pos}}) - f_\theta(u^*, v_{\text{neg}})\big) \right)$$
 
 Here $\sigma$ is the sigmoid function, and $f_\theta$ is the model's score function, which is typically a dot product of node embeddings.
 $u^*$ denotes the current author, and $E(u^*)$ and $E_{\text{neg}}(u^*)$ are the sets of positive and negative edges for that author.
 
 This loss is averaged over some subset $U$ of sampled authors to form the mini-batch loss.
 
-$$
-\text{Loss} = \frac{1}{|U|}\sum_{u^*\in U} \text{Loss}(u^*)
-$$
+$$\text{Loss} = \frac{1}{|U|}\sum_{u^*\in U} \text{Loss}(u^*)$$
 
 ## Training
 
