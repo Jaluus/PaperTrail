@@ -63,7 +63,7 @@ We implement and compare two graph-based recommender system models:
 1. **GraphSage** [3]: A Graph Neural Network (GNN) that generates node embeddings by aggregating
 features from a node's local neighborhood. We adapt GraphSage for our heterogeneous bipartite graph using PyG [2], see
 `modeling/models/simpleGNN.py`.
-2. **LightGCN** [4]: A simplified model using only neighborhood aggregation without feature transformation or 
+2. **LightGCN** [1]: A simplified model using only neighborhood aggregation without feature transformation or 
 nonlinear activation. It is transductive, as the embeddings are learned.
 See `modeling/models/LightGCN.py` for the implementation.
 3. **TextDotProduct**: A non-graph baseline that computes the dot product between author and paper text embeddings.
@@ -82,7 +82,6 @@ python -m train --LightGCN
 ```
 
 To produce plots of training metrics, run the `analyze_results.ipynb` notebook.
-
 
 
 ### Loss Function
