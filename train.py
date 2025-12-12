@@ -21,17 +21,13 @@ torch.cuda.manual_seed_all(42)
 
 FILE_DIR = os.path.dirname(os.path.abspath(__file__))
 DATA_PATH = os.path.join(FILE_DIR, "data", "hetero_data.pt")
-if not os.path.exists(DATA_PATH):
-    raise FileNotFoundError(
-        "Data file not found. Download the file first! Check the Readme for instructions."
-    )
 
 # Hyperparameters
 ITERATIONS = 100000
 BATCH_SIZE = 4096 * 16
 LR = 1e-4
 NEG_SAMPLE_RATIO = 1
-ITERS_PER_EVAL = 5000
+ITERS_PER_EVAL = 1000
 K = 20
 TEST_EDGE_TYPE = ("author", "writes", "paper")
 
@@ -73,6 +69,7 @@ if args.LightGCN:
         embedding_dim=256,
         K=5,
     )
+    print("Using LightGCN model.")
 else:
     model_name = "GNN_full"
     model = SimpleGNN(
@@ -80,6 +77,7 @@ else:
         embedding_dim=256,
         num_layers=5,
     )
+    print("Using SimpleGNN model.")
 
 model = model.to(device)
 model.train()
@@ -191,7 +189,7 @@ for iter in range(ITERATIONS):
         with open(f"loss_{model_name}.pkl", "wb") as f:
             pickle.dump(train_losses, f)
 
-        torch.save(model.state_dict(), f"model_{model_name}_{iter + 1}.pth")
+        torch.save(model.state_dict(), f"model_{model_name}_latest.pth")
         model.train()
 
 
