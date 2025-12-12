@@ -9,7 +9,7 @@ A graph-based recommendation system for helping conference authors discover rele
 </div>
 
 <p align="center">
-  <img src="figures/plot.png" alt="PaperTrail heterogeneous graph (authors ↔ papers)" width="400" />
+  <img src="figures/plot.png" alt="PaperTrail heterogeneous graph (authors ↔ papers)" width="400" background="white" border-radius="8px"/>
 </p>
 
 ## Abstract
