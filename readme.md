@@ -211,7 +211,3 @@ PaperTrail/
 [3] He, Xiangnan, et al. “LightGCN: Simplifying and Powering Graph Convolution Network for Recommendation” SIGIR 2020.
 
 [4] Rendle, Steffen, et al. “BPR: Bayesian Personalized Ranking from Implicit Feedback.” arXiv:1205.2618, arXiv, 9 May 2012.
-
-## License
-
-This repository does not currently include a `LICENSE` file. If you plan to use this code beyond personal/research inspection, clarify licensing first.
