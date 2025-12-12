@@ -55,45 +55,21 @@ scripts/
 
 ## Model training
 
-TODO add some params e.g. LR, N_layers etc.
-
 ```
-python -m src.training.train_model --training-name TB --model TB
-python -m src.training.train_model --training-name HGCN --model HGCN
 
-python -m src.training.train_model --training-name TB_BPR --model TB --loss BPR
-python -m src.training.train_model --training-name HGCN_BPR --model HGCN --loss BPR
-
+python -m train_gregor
+python -m train_gregor --LightGCN
 
 ```
 
 ## Model evaluation
 
-```
-python -m src.evaluation.evaluate_model --results-path results/HGCN.pkl --checkpoint checkpoints/HGCN/best_model_val_loss.pt --model HGCN
-python -m src.evaluation.evaluate_model --results-path results/TB.pkl --checkpoint checkpoints/TB/best_model_val_loss.pt --model TB
-```
+Run the `model_evaluation.ipynb` notebook.  
 
-Non-ML baselines:
 
-```
-python -m src.evaluation.evaluate_model --results-path results/DegreeBaseline.pkl --model DegreeBaseline
- 
+## Plotting metrics vs. step
 
-```
-
-## Plots of validation metrics vs. epoch for different trainings
-
-Will plot the validation metrics for all the trainings. TODO: use wandb or something similar as this will get messy otherwise.
-
-```
-python -m src.evaluation.plot_metrics
-```
-
-## Test metrics
-
-Print the table:
-```python -m src.evaluation.print_eval_table```
+Run the `analyze_results.ipynb` notebook.
 
 ## Metrics
 
