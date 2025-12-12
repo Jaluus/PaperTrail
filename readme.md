@@ -53,6 +53,7 @@ scripts/
 **Dimensionality:** 256 for paper embeddings
 
 ## Model training
+
 Training the HeteroGCN model: `python -m train`
 
 Training the LightGCN model: `python -m train --LightGCN`
@@ -60,7 +61,6 @@ Training the LightGCN model: `python -m train --LightGCN`
 ## Model evaluation
 
 Run the `model_evaluation.ipynb` notebook.  
-
 
 ## Plotting metrics vs. step
 
