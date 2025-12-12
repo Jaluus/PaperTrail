@@ -3,11 +3,12 @@
 
 ## Abstract
 
-We propose to build a personalized paper recommender for conference attendees using an author–paper bipartite graph.
-Nodes represent authors and papers, and edges capture authorship relations.
-We treat recommendations as ranking candidate papers for a target author at a given conference.
-To incorporate semantic signals, we enrich the graph with textual embeddings derived from paper titles and abstracts, and systematically study their contribution to recommendation quality.
-For evaluation, we employ a conference-based split in which the model is trained on one (or more) source conferences and evaluated on a disjoint target conference, enabling a realistic test of generalization performance.
+We introduce PaperTrail, a graph-based recommendation system designed to assist conference authors in discovering
+interesting papers. We represent the relationships between authors and papers as a heterogeneous bipartite graph,
+where nodes represent authors and papers, and edges denote authorship.
+We attempt to use the graph structure as well as textual features (title and abstract) to recommend relevant papers to authors based
+on their previous publications. We compare two graph neural network models, GraphSAGE and LightGCN,
+against a non-graph baseline that simply uses text embeddings of the papers and dot product similarity.
 
 See the associated blog post [here](https://medium.com/@jaluus/26c80a5a6a5a).
 
@@ -60,24 +61,6 @@ The data may also be downloaded directly by running the script `scripts/download
 
 <img src=figures/plot.png alt="Graph Structure" style="width:50%" />
 
-## Metrics
-
-Evaluating a recommender system can be tricky - even though we can view it as a classification or a link prediction
-problem, simple metrics such as accuracy or AUC may not be able to capture the quality of recommendations.
-
-Therefore, we evaluate our models using **personalized ranking metrics**: _Recall@K_ and _Precision@K_.
-The metrics are computed per user in the test set and then averaged across all users.
-- **Recall@K**: Measures the proportion of relevant items that are successfully retrieved in the top K recommendations.
-- **Precision@K**: Measures the proportion of recommended items in the top K that are relevant.
-
-
-## Loss Function
-
-We utilize a Bayesian Personalized Ranking (BPR) loss [4], a pairwise objective which encourages the predictions of
-positive samples to be higher than negative samples for each user.
-
-See the [blog post](https://medium.com/@jaluus/26c80a5a6a5a) for more details.
-
 
 ## Models
 
@@ -91,14 +74,57 @@ See `modeling/models/LightGCN.py` for the implementation.
 3. **TextDotProduct**: A non-graph baseline that computes the dot product between author and paper text embeddings.
 The author embeddings are computed as the mean of the embeddings of their authored papers that should be seen
 during training. See `modeling/models/textDotProduct.py` for the implementation.
-## Training the Recommender System Models
+## Training
+To reproduce the results using both models, run the following commands:
 
-* GraphSage: `python -m train`
-* LightGCN: `python -m train --LightGCN`
+For GraphSAGE:
+```bash
+python -m train
+```
+For LightGCN: 
+```bash
+python -m train --LightGCN
+```
 
 To produce plots of training metrics, run the `analyze_results.ipynb` notebook.
 
-Afterwards, evaluate the models by using the `model_evaluation.ipynb` notebook.
+
+
+### Loss Function
+
+We utilize a Bayesian Personalized Ranking (BPR) loss [4], a pairwise objective which encourages the predictions of
+positive samples to be higher than negative samples for each user.
+
+See the [blog post](https://medium.com/@jaluus/26c80a5a6a5a) for more details.
+
+
+
+## Evaluation
+
+### Evaluation metrics
+
+Evaluating a recommender system can be tricky - even though we can view it as a classification or a link prediction
+problem, simple metrics such as accuracy or AUC may not be able to capture the quality of recommendations.
+
+Therefore, we evaluate our models using **personalized ranking metrics**: _Recall@K_ and _Precision@K_.
+The metrics are computed per user in the test set and then averaged across all users.
+- **Recall@K**: Measures the proportion of relevant items that are successfully retrieved in the top K recommendations.
+- **Precision@K**: Measures the proportion of recommended items in the top K that are relevant.
+
+### Evaluating the trained models
+
+Please refer to `model_evaluation.ipynb` for detailed evaluation of the trained models using the ranking metrics.
+
+### Results
+
+Our models achieve the following performance:
+
+| Model            | Recall@20 | Precision@20 |
+|------------------|-----------|--------------|
+| GraphSAGE        | 0.258	    | 0.06         |
+| LightGCN         | 0.336     | 0.08         |
+| TextDotProduct   | 0.094     | 0.05         |
+
 
 
 ## References
